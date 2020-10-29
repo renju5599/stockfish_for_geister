@@ -1,3 +1,5 @@
+//PSQTÇè¡ÇµÇΩÇ™Ç«Ç§Ç»ÇÃÇ©
+
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -95,7 +97,7 @@ public:
   Bitboard pieces(Color c, PieceType pt) const;
   Bitboard pieces(Color c, PieceType pt1, PieceType pt2) const;
   Piece piece_on(Square s) const;
-  Square ep_square() const;
+  //Square ep_square() const;
   bool empty(Square s) const;
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> int count() const;
@@ -126,8 +128,8 @@ public:
   // Properties of moves
   bool legal(Move m) const;
   bool pseudo_legal(const Move m) const;
-  //bool capture(Move m) const;
-  //bool capture_or_promotion(Move m) const;
+  bool capture(Move m) const;
+  bool capture_or_promotion(Move m) const;
   bool gives_check(Move m) const;
   //bool advanced_pawn_push(Move m) const;
   Piece moved_piece(Move m) const;
@@ -205,9 +207,11 @@ private:
   bool chess960;
 };
 
+/*
 namespace PSQT {
   extern Score psq[PIECE_NB][SQUARE_NB];
 }
+*/
 
 extern std::ostream& operator<<(std::ostream& os, const Position& pos);
 
@@ -394,20 +398,22 @@ inline bool Position::is_chess960() const {
   return chess960;
 }
 
-/* capture is âΩ
+
 inline bool Position::capture_or_promotion(Move m) const {
   assert(is_ok(m));
-  return type_of(m) != NORMAL ? type_of(m) != CASTLING : !empty(to_sq(m));
+  //return type_of(m) != NORMAL ? type_of(m) != CASTLING : !empty(to_sq(m));
+  return type_of(m) != NORMAL ? 1 : !empty(to_sq(m));
 }
-*/
 
-/*
+
+
 inline bool Position::capture(Move m) const {
   assert(is_ok(m));
   // Castling is encoded as "king captures rook"
-  return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == ENPASSANT;
+  //return (!empty(to_sq(m)) && type_of(m) != CASTLING) || type_of(m) == ENPASSANT;
+  return !empty(to_sq(m));
 }
-*/
+
 
 inline Piece Position::captured_piece() const {
   return st->capturedPiece;
@@ -425,7 +431,7 @@ inline void Position::put_piece(Piece pc, Square s) {
   index[s] = pieceCount[pc]++;
   pieceList[pc][index[s]] = s;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
-  psq += PSQT::psq[pc][s];
+  //psq += PSQT::psq[pc][s];
 }
 
 inline void Position::remove_piece(Square s) {
@@ -444,7 +450,7 @@ inline void Position::remove_piece(Square s) {
   pieceList[pc][index[lastSquare]] = lastSquare;
   pieceList[pc][pieceCount[pc]] = SQ_NONE;
   pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
-  psq -= PSQT::psq[pc][s];
+  //psq -= PSQT::psq[pc][s];
 }
 
 inline void Position::move_piece(Square from, Square to) {
@@ -460,7 +466,7 @@ inline void Position::move_piece(Square from, Square to) {
   board[to] = pc;
   index[to] = index[from];
   pieceList[pc][index[to]] = to;
-  psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
+  //psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt) {

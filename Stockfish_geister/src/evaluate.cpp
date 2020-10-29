@@ -16,6 +16,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//よくよく考えたら評価関数全然違うから書き換える必要性がア
+#ifdef false
+
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -395,9 +398,10 @@ namespace {
     for (Square s = *pl; s != SQ_NONE; s = *++pl)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
-        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
-          : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, ROOK))
-                         : attacks_bb<Pt>(s, pos.pieces());
+        //b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(QUEEN))
+        //  : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(QUEEN) ^ pos.pieces(Us, ROOK))
+        //                 : attacks_bb<Pt>(s, pos.pieces());
+        b = attacks_bb<Pt>(s, pos.pieces());
 
         if (pos.blockers_for_king(Us) & s)
             b &= line_bb(pos.square<KING>(Us), s);
@@ -413,16 +417,17 @@ namespace {
             kingAttacksCount[Us] += popcount(b & attackedBy[Them][KING]);
         }
 
-        else if (Pt == ROOK && (file_bb(s) & kingRing[Them]))
-            score += RookOnKingRing;
+        //else if (Pt == ROOK && (file_bb(s) & kingRing[Them]))
+        //    score += RookOnKingRing;
 
-        else if (Pt == BISHOP && (attacks_bb<BISHOP>(s, pos.pieces(PAWN)) & kingRing[Them]))
-            score += BishopOnKingRing;
+        //else if (Pt == BISHOP && (attacks_bb<BISHOP>(s, pos.pieces(PAWN)) & kingRing[Them]))
+        //    score += BishopOnKingRing;
 
         int mob = popcount(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
+        /*
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus if the piece is on an outpost square or can reach one
@@ -479,7 +484,9 @@ namespace {
                 }
             }
         }
+        */
 
+        /*
         if (Pt == ROOK)
         {
             // Bonus for rook on the same file as a queen
@@ -498,7 +505,8 @@ namespace {
                     score -= TrappedRook * (1 + !pos.castling_rights(Us));
             }
         }
-
+        */
+        /*
         if (Pt == QUEEN)
         {
             // Penalty if any relative pin or discovered attack against the queen
@@ -506,6 +514,7 @@ namespace {
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, queenPinners))
                 score -= WeakQueen;
         }
+        */
     }
     if (T)
         Trace::add(Pt, Us, score);
@@ -534,15 +543,17 @@ namespace {
     // Attacked squares defended at most once by our queen or king
     weak =  attackedBy[Them][ALL_PIECES]
           & ~attackedBy2[Us]
-          & (~attackedBy[Us][ALL_PIECES] | attackedBy[Us][KING] | attackedBy[Us][QUEEN]);
+          //& (~attackedBy[Us][ALL_PIECES] | attackedBy[Us][KING] | attackedBy[Us][QUEEN]);
+          & (~attackedBy[Us][ALL_PIECES] | attackedBy[Us][KING]);
 
     // Analyse the safe enemy's checks which are possible on next move
     safe  = ~pos.pieces(Them);
     safe &= ~attackedBy[Us][ALL_PIECES] | (weak & attackedBy2[Them]);
 
-    b1 = attacks_bb<ROOK  >(ksq, pos.pieces() ^ pos.pieces(Us, QUEEN));
-    b2 = attacks_bb<BISHOP>(ksq, pos.pieces() ^ pos.pieces(Us, QUEEN));
+    //b1 = attacks_bb<ROOK  >(ksq, pos.pieces() ^ pos.pieces(Us, QUEEN));
+    //b2 = attacks_bb<BISHOP>(ksq, pos.pieces() ^ pos.pieces(Us, QUEEN));
 
+    /*
     // Enemy rooks checks
     rookChecks = b1 & attackedBy[Them][ROOK] & safe;
     if (rookChecks)
@@ -550,6 +561,8 @@ namespace {
     else
         unsafeChecks |= b1 & attackedBy[Them][ROOK];
 
+    */
+    /*
     // Enemy queen safe checks: count them only if the checks are from squares from
     // which opponent cannot give a rook check, because rook checks are more valuable.
     queenChecks =  (b1 | b2) & attackedBy[Them][QUEEN] & safe
@@ -557,6 +570,8 @@ namespace {
     if (queenChecks)
         kingDanger += SafeCheck[QUEEN][more_than_one(queenChecks)];
 
+    */
+    /*
     // Enemy bishops checks: count them only if they are from squares from which
     // opponent cannot give a queen check, because queen checks are more valuable.
     bishopChecks =  b2 & attackedBy[Them][BISHOP] & safe
@@ -567,12 +582,16 @@ namespace {
     else
         unsafeChecks |= b2 & attackedBy[Them][BISHOP];
 
+    */
+    /*
     // Enemy knights checks
     knightChecks = attacks_bb<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
     if (knightChecks & safe)
         kingDanger += SafeCheck[KNIGHT][more_than_one(knightChecks & safe)];
     else
         unsafeChecks |= knightChecks;
+
+    */
 
     // Find the squares that opponent attacks in our king flank, the squares
     // which they attack twice in that flank, and the squares that we defend.
@@ -590,8 +609,8 @@ namespace {
                  +  69 * kingAttacksCount[Them]
                  +   3 * kingFlankAttack * kingFlankAttack / 8
                  +       mg_value(mobility[Them] - mobility[Us])
-                 - 873 * !pos.count<QUEEN>(Them)
-                 - 100 * bool(attackedBy[Us][KNIGHT] & attackedBy[Us][KING])
+                 //- 873 * !pos.count<QUEEN>(Them)
+                 //- 100 * bool(attackedBy[Us][KNIGHT] & attackedBy[Us][KING])
                  -   6 * mg_value(score) / 8
                  -   4 * kingFlankDefense
                  +  37;
@@ -600,9 +619,11 @@ namespace {
     if (kingDanger > 100)
         score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
 
+    /*
     // Penalty when our king is on a pawnless flank
     if (!(pos.pieces(PAWN) & KingFlank[file_of(ksq)]))
         score -= PawnlessFlank;
+    */
 
     // Penalty if king flank is under attack, potentially moving toward the king
     score -= FlankAttacks * kingFlankAttack;
@@ -628,12 +649,14 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies
-    nonPawnEnemies = pos.pieces(Them) & ~pos.pieces(PAWN);
+    //nonPawnEnemies = pos.pieces(Them) & ~pos.pieces(PAWN);
+    nonPawnEnemies = pos.pieces(Them);
 
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
-    stronglyProtected =  attackedBy[Them][PAWN]
-                       | (attackedBy2[Them] & ~attackedBy2[Us]);
+    //stronglyProtected =  attackedBy[Them][PAWN]
+    //                   | (attackedBy2[Them] & ~attackedBy2[Us]);
+    stronglyProtected = (attackedBy2[Them] & ~attackedBy2[Us]);
 
     // Non-pawn enemies, strongly protected
     defended = nonPawnEnemies & stronglyProtected;
@@ -644,14 +667,17 @@ namespace {
     // Bonus according to the kind of attacking pieces
     if (defended | weak)
     {
-        b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
+        /*
+        //b = (defended | weak) & (attackedBy[Us][KNIGHT] | attackedBy[Us][BISHOP]);
+        b = (defended | weak);  //こういう修正は、「全員の攻撃」となる？
         while (b)
             score += ThreatByMinor[type_of(pos.piece_on(pop_lsb(&b)))];
-
+        */
+        /*
         b = weak & attackedBy[Us][ROOK];
         while (b)
             score += ThreatByRook[type_of(pos.piece_on(pop_lsb(&b)))];
-
+        */
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
 
@@ -660,7 +686,7 @@ namespace {
         score += Hanging * popcount(weak & b);
 
         // Additional bonus if weak piece is only protected by a queen
-        score += WeakQueenProtection * popcount(weak & attackedBy[Them][QUEEN]);
+        //score += WeakQueenProtection * popcount(weak & attackedBy[Them][QUEEN]);
     }
 
     // Bonus for restricting their piece moves
@@ -672,14 +698,18 @@ namespace {
     // Protected or unattacked squares
     safe = ~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES];
 
+    /*
     // Bonus for attacking enemy pieces with our relatively safe pawns
     b = pos.pieces(Us, PAWN) & safe;
     b = pawn_attacks_bb<Us>(b) & nonPawnEnemies;
     score += ThreatBySafePawn * popcount(b);
+    */
 
+    /*
     // Find squares where our pawns can push on the next move
     b  = shift<Up>(pos.pieces(Us, PAWN)) & ~pos.pieces();
     b |= shift<Up>(b & TRank3BB) & ~pos.pieces();
+    */
 
     // Keep only the squares which are relatively safe
     b &= ~attackedBy[Them][PAWN] & safe;
@@ -1114,3 +1144,4 @@ std::string Eval::trace(const Position& pos) {
 
   return ss.str();
 }
+#endif

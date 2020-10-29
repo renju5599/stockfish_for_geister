@@ -16,6 +16,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef FALSE
+‚È‚ñ‚à‚í‚©‚ç‚ñ
+
 #include <cassert>
 
 #include "bitboard.h"
@@ -741,3 +744,4 @@ ScaleFactor Endgame<KPKP>::operator()(const Position& pos) const {
   // it's probably at least a draw even with the pawn.
   return Bitbases::probe(strongKing, strongPawn, weakKing, us) ? SCALE_FACTOR_NONE : SCALE_FACTOR_DRAW;
 }
+#endif

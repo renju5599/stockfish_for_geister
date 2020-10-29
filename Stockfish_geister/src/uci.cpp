@@ -85,9 +85,9 @@ namespace {
     Position p;
     p.set(pos.fen(), Options["UCI_Chess960"], &states->back(), Threads.main());
 
-    Eval::NNUE::verify();
+    //Eval::NNUE::verify();
 
-    sync_cout << "\n" << Eval::trace(p) << sync_endl;
+    //sync_cout << "\n" << Eval::trace(p) << sync_endl;
   }
 
 
@@ -343,13 +343,13 @@ string UCI::move(Move m, bool chess960) {
   if (m == MOVE_NULL)
       return "0000";
 
-  if (type_of(m) == CASTLING && !chess960)
-      to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
+  //if (type_of(m) == CASTLING && !chess960)
+  //    to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
 
   string move = UCI::square(from) + UCI::square(to);
 
-  if (type_of(m) == PROMOTION)
-      move += " pnbrqk"[promotion_type(m)];
+  //if (type_of(m) == PROMOTION)
+  //    move += " pnbrqk"[promotion_type(m)];
 
   return move;
 }

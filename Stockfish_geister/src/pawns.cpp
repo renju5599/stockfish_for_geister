@@ -15,6 +15,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef false
 
 #include <algorithm>
 #include <cassert>
@@ -279,3 +280,5 @@ template Score Entry::do_king_safety<WHITE>(const Position& pos);
 template Score Entry::do_king_safety<BLACK>(const Position& pos);
 
 } // namespace Pawns
+
+#endif

@@ -16,6 +16,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef FALSE
+‹î‚ÌˆÊ’u‚É‚æ‚é•]‰¿‚È‚Ì‚Å’m‚ç‚ñ
+
 #include <algorithm>
 
 #include "types.h"
@@ -120,3 +123,5 @@ void init() {
 }
 
 } // namespace PSQT
+
+#endif

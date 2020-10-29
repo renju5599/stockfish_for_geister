@@ -1,3 +1,5 @@
+//"evaluate"‚Ì•”•ª‚ð‚Ç‚¤‚É‚©‚µ‚Ä‚­‚¾‚³‚¢
+
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -23,7 +25,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "evaluate.h"
+//#include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
@@ -51,7 +53,7 @@ namespace Tablebases {
 namespace TB = Tablebases;
 
 using std::string;
-using Eval::evaluate;
+//using Eval::evaluate;
 using namespace Search;
 
 namespace {
@@ -225,7 +227,7 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  Eval::NNUE::verify();
+  //Eval::NNUE::verify();
 
   if (rootMoves.empty())
   {
@@ -626,8 +628,9 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
-                                                        : value_draw(pos.this_thread());
+            //return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
+            //                                            : value_draw(pos.this_thread());
+            return VALUE_NONE;
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -722,7 +725,7 @@ namespace {
         if (    piecesCount <= TB::Cardinality
             && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
             &&  pos.rule50_count() == 0
-            && !pos.can_castle(ANY_CASTLING))
+            /*&& !pos.can_castle(ANY_CASTLING)*/)
         {
             TB::ProbeState err;
             TB::WDLScore wdl = Tablebases::probe_wdl(pos, &err);
@@ -781,7 +784,8 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos);
+            //ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = VALUE_NONE;
 
         if (eval == VALUE_DRAW)
             eval = value_draw(thisThread);
@@ -794,7 +798,8 @@ namespace {
     else
     {
         if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate(pos);
+            //ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = VALUE_NONE;
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
@@ -1113,14 +1118,15 @@ moves_loop: // When in check, search starts from here
           extension = 1;
 
       // Last captures extension
-      else if (   PieceValue[EG][pos.captured_piece()] > PawnValueEg
-               && pos.non_pawn_material() <= 2 * RookValueMg)
-          extension = 1;
+      //pawn‚àrook‚à‚È‚¢‚Ì‚ÅÁ‚µ‚Ä‚Ý‚é
+      //else if (   PieceValue[EG][pos.captured_piece()] > PawnValueEg
+      //         && pos.non_pawn_material() <= 2 * RookValueMg)
+      //    extension = 1;
 
       // Late irreversible move extension
       if (   move == ttMove
           && pos.rule50_count() > 80
-          && (captureOrPromotion || type_of(movedPiece) == PAWN))
+          /*&& (captureOrPromotion || type_of(movedPiece) == PAWN)*/)
           extension = 2;
 
       // Add extension to new depth
@@ -1425,7 +1431,8 @@ moves_loop: // When in check, search starts from here
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
+        //return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
+        return (ss->ply >= MAX_PLY && !ss->inCheck) ? VALUE_NONE : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1461,7 +1468,8 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos);
+                //ss->staticEval = bestValue = evaluate(pos);
+                ss->staticEval = bestValue = VALUE_NONE;
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1470,7 +1478,8 @@ moves_loop: // When in check, search starts from here
         }
         else
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+            //(ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+            (ss - 1)->currentMove != MOVE_NULL ? VALUE_NONE
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta
@@ -1516,9 +1525,9 @@ moves_loop: // When in check, search starts from here
       if (   !ss->inCheck
           && !givesCheck
           &&  futilityBase > -VALUE_KNOWN_WIN
-          && !pos.advanced_pawn_push(move))
+          /*&& !pos.advanced_pawn_push(move)*/)
       {
-          assert(type_of(move) != ENPASSANT); // Due to !pos.advanced_pawn_push
+          //assert(type_of(move) != ENPASSANT); // Due to !pos.advanced_pawn_push
 
           // moveCount pruning
           if (moveCount > 2)
@@ -1742,7 +1751,8 @@ moves_loop: // When in check, search starts from here
     thisThread->mainHistory[us][from_to(move)] << bonus;
     update_continuation_histories(ss, pos.moved_piece(move), to_sq(move), bonus);
 
-    if (type_of(pos.moved_piece(move)) != PAWN)
+    //if (type_of(pos.moved_piece(move)) != PAWN)
+    if(true)
         thisThread->mainHistory[us][from_to(reverse_move(move))] << -bonus;
 
     if (is_ok((ss-1)->currentMove))
@@ -1931,7 +1941,8 @@ void Tablebases::rank_root_moves(Position& pos, Search::RootMoves& rootMoves) {
         ProbeDepth = 0;
     }
 
-    if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    //if (Cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    if (Cardinality >= popcount(pos.pieces()))
     {
         // Rank moves using DTZ tables
         RootInTB = root_probe(pos, rootMoves);

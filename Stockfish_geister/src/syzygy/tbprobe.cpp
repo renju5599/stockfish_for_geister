@@ -339,13 +339,13 @@ struct TBTable {
     Key key;
     Key key2;
     int pieceCount;
-    bool hasPawns;
+    //bool hasPawns;
     bool hasUniquePieces;
     uint8_t pawnCount[2]; // [Lead color / other color]
     PairsData items[Sides][4]; // [wtm / btm][FILE_A..FILE_D or 0]
 
     PairsData* get(int stm, int f) {
-        return &items[stm % Sides][hasPawns ? f : 0];
+        return &items[stm % Sides][/*hasPawns ? f :*/ 0];
     }
 
     TBTable() : ready(false), baseAddress(nullptr) {}
@@ -366,7 +366,7 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
 
     key = pos.set(code, WHITE, &st).material_key();
     pieceCount = pos.count<ALL_PIECES>();
-    hasPawns = pos.pieces(PAWN);
+    //hasPawns = pos.pieces(PAWN);
 
     hasUniquePieces = false;
     for (Color c : { WHITE, BLACK })
@@ -393,7 +393,7 @@ TBTable<DTZ>::TBTable(const TBTable<WDL>& wdl) : TBTable() {
     key = wdl.key;
     key2 = wdl.key2;
     pieceCount = wdl.pieceCount;
-    hasPawns = wdl.hasPawns;
+    //hasPawns = wdl.hasPawns;
     hasUniquePieces = wdl.hasUniquePieces;
     pawnCount[0] = wdl.pawnCount[0];
     pawnCount[1] = wdl.pawnCount[1];
@@ -628,7 +628,7 @@ bool check_dtz_stm(TBTable<DTZ>* entry, int stm, File f) {
 
     auto flags = entry->get(stm, f)->flags;
     return   (flags & TBFlag::STM) == stm
-          || ((entry->key == entry->key2) && !entry->hasPawns);
+          || ((entry->key == entry->key2)/* && !entry->hasPawns*/);
 }
 
 // DTZ scores are sorted by frequency of occurrence and then assigned the
@@ -699,6 +699,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // For pawns, TB files store 4 separate tables according if leading pawn is on
     // file a, b, c or d after reordering. The leading pawn is the one with maximum
     // MapPawns[] value, that is the one most toward the edges and with lowest rank.
+    /*
     if (entry->hasPawns) {
 
         // In all the 4 tables, pawns are at the beginning of the piece sequence and
@@ -718,6 +719,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
         tbFile = File(edge_distance(file_of(squares[0])));
     }
+    */
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
     // move or only for black to move, so check for side to move to be stm,
@@ -757,6 +759,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
     // Encode leading pawns starting with the one with minimum MapPawns[] and
     // proceeding in ascending order.
+    /*
     if (entry->hasPawns) {
         idx = LeadPawnIdx[leadPawnsCnt][squares[0]];
 
@@ -767,6 +770,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
         goto encode_remaining; // With pawns we have finished special treatments
     }
+    */
 
     // In positions withouth pawns, we further flip the squares to ensure leading
     // piece is below RANK_5.
@@ -857,7 +861,7 @@ encode_remaining:
     Square* groupSq = squares + d->groupLen[0];
 
     // Encode remainig pawns then pieces according to square, in ascending order
-    bool remainingPawns = entry->hasPawns && entry->pawnCount[1];
+    //bool remainingPawns = entry->hasPawns && entry->pawnCount[1];
 
     while (d->groupLen[++next])
     {
@@ -870,10 +874,10 @@ encode_remaining:
         {
             auto f = [&](Square s) { return groupSq[i] > s; };
             auto adjust = std::count_if(squares, groupSq, f);
-            n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
+            n += Binomial[i + 1][groupSq[i] - adjust/* - 8 * remainingPawns*/];
         }
 
-        remainingPawns = false;
+        //remainingPawns = false;
         idx += n * d->groupIdx[next];
         groupSq += d->groupLen[next];
     }
@@ -895,7 +899,7 @@ encode_remaining:
 template<typename T>
 void set_groups(T& e, PairsData* d, int order[], File f) {
 
-    int n = 0, firstLen = e.hasPawns ? 0 : e.hasUniquePieces ? 3 : 2;
+    int n = 0, firstLen = /*e.hasPawns ? 0 :*/ e.hasUniquePieces ? 3 : 2;
     d->groupLen[n] = 1;
 
     // Number of pieces per group is stored in groupLen[], for instance in KRKN
@@ -919,17 +923,17 @@ void set_groups(T& e, PairsData* d, int order[], File f) {
     // pawns/pieces -> remainig pawns -> remaining pieces. In particular the
     // first group is at order[0] position and the remaining pawns, when present,
     // are at order[1] position.
-    bool pp = e.hasPawns && e.pawnCount[1]; // Pawns on both sides
-    int next = pp ? 2 : 1;
-    int freeSquares = 64 - d->groupLen[0] - (pp ? d->groupLen[1] : 0);
+    //bool pp = e.hasPawns && e.pawnCount[1]; // Pawns on both sides
+    int next = /*pp ? 2 :*/ 1;
+    int freeSquares = 64 - d->groupLen[0]/* - (pp ? d->groupLen[1] : 0)*/;
     uint64_t idx = 1;
 
     for (int k = 0; next < n || k == order[0] || k == order[1]; ++k)
         if (k == order[0]) // Leading pawns or pieces
         {
             d->groupIdx[0] = idx;
-            idx *=         e.hasPawns ? LeadPawnsSize[d->groupLen[0]][f]
-                  : e.hasUniquePieces ? 31332 : 462;
+            idx *=         /*e.hasPawns ? LeadPawnsSize[d->groupLen[0]][f]
+                  :*/ e.hasUniquePieces ? 31332 : 462;
         }
         else if (k == order[1]) // Remaining pawns
         {
@@ -1070,26 +1074,27 @@ void set(T& e, uint8_t* data) {
 
     enum { Split = 1, HasPawns = 2 };
 
-    assert(e.hasPawns        == bool(*data & HasPawns));
+    //assert(e.hasPawns        == bool(*data & HasPawns));
     assert((e.key != e.key2) == bool(*data & Split));
 
     data++; // First byte stores flags
 
     const int sides = T::Sides == 2 && (e.key != e.key2) ? 2 : 1;
-    const File maxFile = e.hasPawns ? FILE_D : FILE_A;
+    const File maxFile = /*e.hasPawns ? FILE_D :*/ FILE_A;
 
-    bool pp = e.hasPawns && e.pawnCount[1]; // Pawns on both sides
+    //bool pp = e.hasPawns && e.pawnCount[1]; // Pawns on both sides
 
-    assert(!pp || e.pawnCount[0]);
+    //assert(!pp || e.pawnCount[0]);
 
     for (File f = FILE_A; f <= maxFile; ++f) {
 
         for (int i = 0; i < sides; i++)
             *e.get(i, f) = PairsData();
 
-        int order[][2] = { { *data & 0xF, pp ? *(data + 1) & 0xF : 0xF },
-                           { *data >>  4, pp ? *(data + 1) >>  4 : 0xF } };
-        data += 1 + pp;
+        int order[][2] = { { *data & 0xF, /*pp ? *(data + 1) & 0xF :*/ 0xF },
+                           { *data >>  4, /*pp ? *(data + 1) >>  4 :*/ 0xF } };
+        //data += 1 + pp;
+        data += 1;
 
         for (int k = 0; k < e.pieceCount; ++k, ++data)
             for (int i = 0; i < sides; i++)
@@ -1472,7 +1477,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     for (const Move move : MoveList<LEGAL>(pos))
     {
-        bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
+        //bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
 
         pos.do_move(move, st);
 
@@ -1480,8 +1485,8 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
         // otherwise we will get the dtz of the next move sequence. Search the
         // position after the move to get the score sign (because even in a
         // winning position we could make a losing capture or going for a draw).
-        dtz = zeroing ? -dtz_before_zeroing(search<false>(pos, result))
-                      : -probe_dtz(pos, result);
+        dtz = /*zeroing ? -dtz_before_zeroing(search<false>(pos, result))
+                      :*/ -probe_dtz(pos, result);
 
         // If the move mates, force minDTZ to 1
         if (dtz == 1 && pos.checkers() && MoveList<LEGAL>(pos).size() == 0)
@@ -1489,7 +1494,7 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
         // Convert result from 1-ply search. Zeroing moves are already accounted
         // by dtz_before_zeroing() that returns the DTZ of the previous move.
-        if (!zeroing)
+        //if (!zeroing)
             dtz += sign_of(dtz);
 
         // Skip the draws and if we are winning only pick positive dtz

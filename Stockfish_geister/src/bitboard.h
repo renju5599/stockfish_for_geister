@@ -289,7 +289,8 @@ inline int edge_distance(Rank r) { return std::min(r, Rank(RANK_8 - r)); }
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s) {
 
-  assert((Pt != PAWN) && (is_ok(s)));
+  //assert((Pt != PAWN) && (is_ok(s)));
+  assert((is_ok(s)));
 
   return PseudoAttacks[Pt][s];
 }
@@ -302,7 +303,8 @@ inline Bitboard attacks_bb(Square s) {
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
-  assert((Pt != PAWN) && (is_ok(s)));
+  //assert((Pt != PAWN) && (is_ok(s)));
+  assert((is_ok(s)));
 
   /*switch (Pt)
   {
@@ -316,7 +318,8 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
-  assert((pt != PAWN) && (is_ok(s)));
+  //assert((pt != PAWN) && (is_ok(s)));
+  assert((is_ok(s)));
 
   /*switch (pt)
   {
