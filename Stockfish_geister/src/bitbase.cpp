@@ -16,6 +16,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// KPK -> King Porn VS King
+#ifdef false
+
 #include <cassert>
 #include <vector>
 #include <bitset>
@@ -168,3 +171,4 @@ namespace {
   }
 
 } // namespace
+#endif

@@ -326,14 +326,14 @@ void Position::set_check_info(StateInfo* si) const {
   //si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinners[BLACK]);
   //si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinners[WHITE]);
 
-  Square ksq = square<KING>(~sideToMove);
-
+  //Square ksq = square<KING>(~sideToMove);
   //si->checkSquares[PAWN]   = pawn_attacks_bb(~sideToMove, ksq);
   //si->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
   //si->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
   //si->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
   //si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  si->checkSquares[KING]   = 0;
+  si->checkSquares[BLUE]     = 0;
+  si->checkSquares[RED]      = 0;
 }
 
 
@@ -347,7 +347,8 @@ void Position::set_state(StateInfo* si) const {
   si->key = si->materialKey = 0;
   //si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
-  si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  //si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
+  si->checkersBB = attackers_to(square<GOAL>(sideToMove)) & pieces(~sideToMove) & pieces(BLUE);
 
   set_check_info(si);
 
@@ -498,12 +499,15 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
         | (attacks_bb<  ROOK>(s, occupied) & pieces(  ROOK, QUEEN))
         | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
         | (attacks_bb<KING>(s)             & pieces(KING));*/
-  return (attacks_bb<KING>(s) & pieces(KING));
+  return  (attacks_bb<BLUE>(s)    & pieces(BLUE))
+        | (attacks_bb<RED>(s)     & pieces(RED))
+        | (attacks_bb<PURPLE>(s)  & pieces(PURPLE));
 }
 
 
 /// Position::legal() tests whether a pseudo-legal move is legal
 
+// もしかして：いらない
 bool Position::legal(Move m) const {
 
   assert(is_ok(m));
@@ -513,7 +517,7 @@ bool Position::legal(Move m) const {
   Square to = to_sq(m);
 
   assert(color_of(moved_piece(m)) == us);
-  assert(piece_on(square<KING>(us)) == make_piece(us, KING));
+  //assert(piece_on(square<KING>(us)) == make_piece(us, KING));
 
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
@@ -555,13 +559,18 @@ bool Position::legal(Move m) const {
 
   // If the moving piece is a king, check whether the destination square is
   // attacked by the opponent.
-  if (type_of(piece_on(from)) == KING)
-      return !(attackers_to(to) & pieces(~us));
+  //if (type_of(piece_on(from)) == KING)
+  //    return !(attackers_to(to) & pieces(~us));
 
+
+  //たぶんここ↓で枝刈りしてる
+  //無意味な手はしない
+  //ガイスターにそういう手があるか知らない
   // A non-king move is legal if and only if it is not pinned or it
   // is moving along the ray towards or away from the king.
-  return   !(blockers_for_king(us) & from)
-        ||  aligned(from, to, square<KING>(us));
+  //return   !(blockers_for_king(us) & from)
+  //      ||  aligned(from, to, square<KING>(us));
+  return true;
 }
 
 
@@ -618,20 +627,21 @@ bool Position::pseudo_legal(const Move m) const {
   // kind of moves are filtered out here.
   if (checkers())
   {
-      if (type_of(pc) != KING)
+      
+      //if (type_of(pc) != KING)
       {
           // Double check? In this case a king move is required
-          if (more_than_one(checkers()))
-              return false;
+          //if (more_than_one(checkers()))
+          //    return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          if (!((between_bb(lsb(checkers()), square<KING>(us)) | checkers()) & to))
+          if (!((between_bb(lsb(checkers()), square<GOAL>(us)) | checkers()) & to))
               return false;
       }
       // In case of king moves under check we have to remove king so as to catch
       // invalid moves like b1a1 when opposite queen is on c1.
-      else if (attackers_to(to, pieces() ^ from) & pieces(~us))
-          return false;
+      //else if (attackers_to(to, pieces() ^ from) & pieces(~us))
+      //    return false;
   }
 
   return true;
@@ -654,7 +664,8 @@ bool Position::gives_check(Move m) const {
 
   // Is there a discovered check?
   if (   (blockers_for_king(~sideToMove) & from)
-      && !aligned(from, to, square<KING>(~sideToMove)))
+      //&& !aligned(from, to, square<KING>(~sideToMove)))
+      && !aligned(from, to, square<GOAL>(~sideToMove)))
       return true;
 
   switch (type_of(m))
@@ -736,7 +747,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   assert(color_of(pc) == us);
   //assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
-  assert(type_of(captured) != KING);
+  //assert(type_of(captured) != KING);
+  assert(type_of(captured) != GOAL);
 
 
   //if (type_of(m) == CASTLING)
@@ -889,7 +901,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   st->key = k;
 
   // Calculate checkers bitboard (if move gives check)
-  st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
+  st->checkersBB = givesCheck ? attackers_to(square<GOAL>(them)) & pieces(us) & pieces(BLUE) : 0;
 
   sideToMove = ~sideToMove;
 
@@ -934,7 +946,8 @@ void Position::undo_move(Move m) {
   Piece pc = piece_on(to);
 
   //assert(empty(from) || type_of(m) == CASTLING);
-  assert(type_of(st->capturedPiece) != KING);
+  //assert(type_of(st->capturedPiece) != KING);
+  assert(type_of(st->capturedPiece) != GOAL);
 
   
   //if (type_of(m) == PROMOTION)
@@ -1316,8 +1329,10 @@ bool Position::pos_is_ok() const {
   constexpr bool Fast = true; // Quick (default) or full check?
 
   if (   (sideToMove != WHITE && sideToMove != BLACK)
-      || piece_on(square<KING>(WHITE)) != W_KING
-      || piece_on(square<KING>(BLACK)) != B_KING
+      //|| piece_on(square<KING>(WHITE)) != W_KING
+      //|| piece_on(square<KING>(BLACK)) != B_KING
+      || piece_on(square<GOAL>(WHITE)) != W_GOAL
+      || piece_on(square<GOAL>(BLACK)) != B_GOAL
       /*|| (   ep_square() != SQ_NONE
           && relative_rank(sideToMove, ep_square()) != RANK_6)*/)
       assert(0 && "pos_is_ok: Default");
@@ -1327,7 +1342,8 @@ bool Position::pos_is_ok() const {
 
   if (   pieceCount[W_KING] != 1
       || pieceCount[B_KING] != 1
-      || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+      //|| attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+      || attackers_to(square<GOAL>(~sideToMove)) & pieces(sideToMove))
       assert(0 && "pos_is_ok: Kings");
 
   //if (   (pieces(PAWN) & (Rank1BB | Rank8BB))

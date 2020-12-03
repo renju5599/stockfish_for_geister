@@ -1,5 +1,3 @@
-//PSQTÇè¡ÇµÇΩÇ™Ç«Ç§Ç»ÇÃÇ©
-
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -50,7 +48,7 @@ struct StateInfo {
 
   // Not copied when making a move (will be recomputed anyhow)
   Key        key;
-  Bitboard   checkersBB;
+  Bitboard   checkersBB;  //"â§éË" -> íEèo
   Piece      capturedPiece;
   StateInfo* previous;
   Bitboard   blockersForKing[COLOR_NB];

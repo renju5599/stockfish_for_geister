@@ -25,7 +25,7 @@
 #include <thread>
 #include <vector>
 
-//#include "material.h"
+#include "material.h"
 #include "movepick.h"
 //#include "pawns.h"
 #include "position.h"
@@ -56,7 +56,7 @@ public:
   void wait_for_search_finished();
 
   //Pawns::Table pawnsTable;
-  //Material::Table materialTable;
+  Material::Table materialTable;
   size_t pvIdx, pvLast;
   uint64_t ttHitAverage;
   int selDepth, nmpMinPly;

@@ -102,10 +102,14 @@ void Bitboards::init() {
 
       //左上、上、右上みたいな感じの数列
       //要するに王将の動き
+      for (int step : {-8, -1, 1, 8}) {
+        PseudoAttacks[BLUE][s1] |= safe_destination(s1, step);
+        PseudoAttacks[RED][s1] |= safe_destination(s1, step);
+        PseudoAttacks[PURPLE][s1] |= safe_destination(s1, step);
+      }
+
       //for (int step : {-9, -8, -7, -1, 1, 7, 8, 9} )
       //   PseudoAttacks[KING][s1] |= safe_destination(s1, step);
-      for (int step : {-8, -1, 1, 8})
-        PseudoAttacks[KING][s1] |= safe_destination(s1, step);
 
       /*
       for (int step : {-17, -15, -10, -6, 6, 10, 15, 17} )

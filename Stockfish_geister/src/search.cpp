@@ -1,5 +1,3 @@
-//"evaluate"‚Ì•”•ª‚ð‚Ç‚¤‚É‚©‚µ‚Ä‚­‚¾‚³‚¢
-
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -25,7 +23,7 @@
 #include <iostream>
 #include <sstream>
 
-//#include "evaluate.h"
+#include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
@@ -53,7 +51,7 @@ namespace Tablebases {
 namespace TB = Tablebases;
 
 using std::string;
-//using Eval::evaluate;
+using Eval::evaluate;
 using namespace Search;
 
 namespace {
@@ -227,7 +225,7 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  //Eval::NNUE::verify();
+  Eval::NNUE::verify();
 
   if (rootMoves.empty())
   {
@@ -628,9 +626,9 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            //return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
-            //                                            : value_draw(pos.this_thread());
-            return VALUE_NONE;
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
+                                                        : value_draw(pos.this_thread());
+            //return VALUE_NONE;
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -784,8 +782,8 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            //ss->staticEval = eval = evaluate(pos);
-            ss->staticEval = eval = VALUE_NONE;
+            ss->staticEval = eval = evaluate(pos);
+            //ss->staticEval = eval = VALUE_NONE;
 
         if (eval == VALUE_DRAW)
             eval = value_draw(thisThread);
@@ -798,8 +796,8 @@ namespace {
     else
     {
         if ((ss-1)->currentMove != MOVE_NULL)
-            //ss->staticEval = eval = evaluate(pos);
-            ss->staticEval = eval = VALUE_NONE;
+            ss->staticEval = eval = evaluate(pos);
+            //ss->staticEval = eval = VALUE_NONE;
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
@@ -1427,12 +1425,12 @@ moves_loop: // When in check, search starts from here
     bestMove = MOVE_NONE;
     ss->inCheck = pos.checkers();
     moveCount = 0;
-
+    
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        //return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? VALUE_NONE : VALUE_DRAW;
+        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
+        //return (ss->ply >= MAX_PLY && !ss->inCheck) ? VALUE_NONE : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1468,8 +1466,8 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                //ss->staticEval = bestValue = evaluate(pos);
-                ss->staticEval = bestValue = VALUE_NONE;
+                ss->staticEval = bestValue = evaluate(pos);
+                //ss->staticEval = bestValue = VALUE_NONE;
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1478,8 +1476,8 @@ moves_loop: // When in check, search starts from here
         }
         else
             ss->staticEval = bestValue =
-            //(ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
-            (ss - 1)->currentMove != MOVE_NULL ? VALUE_NONE
+            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+            //(ss - 1)->currentMove != MOVE_NULL ? VALUE_NONE
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta

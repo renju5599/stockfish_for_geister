@@ -1,6 +1,3 @@
-//コメント化されたコードは、元のコード（←このコメントは"手を付けた"アピール）
-//まだおわってないよ
-
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -195,35 +192,34 @@ enum Value : int {
 };
 
 enum PieceType {
-  NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
+  //NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
+  //ALL_PIECES = 0,
+  //PIECE_TYPE_NB = 8
+  NO_PIECE_TYPE, BLUE, RED, PURPLE, GOAL,
   ALL_PIECES = 0,
   PIECE_TYPE_NB = 8
-  //NO_PIECE_TYPE, KING,
-  //ALL_PIECES = 0,
-  //PIECE_TYPE_NB = 3
 };
 
 enum Piece {
-  NO_PIECE,
-  W_PAWN = 1, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-  B_PAWN = 9, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
-  PIECE_NB = 16
   //NO_PIECE,
-  //W_KING,
-  //B_KING,
-  //PIECE_NB = 4
+  //W_PAWN = 1, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+  //B_PAWN = 9, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
+  //PIECE_NB = 16
+  NO_PIECE,
+  W_BLUE = 1, W_RED, W_PURPLE, W_GOAL,
+  B_BLUE = 9, B_RED, B_PURPLE, B_GOAL,
+  PIECE_NB = 16
 };
 
-//これ、どうしようか...
 constexpr Value PieceValue[PHASE_NB][PIECE_NB] = {
-  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO,
-    VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO },
-  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, VALUE_ZERO, VALUE_ZERO,
-    VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, VALUE_ZERO, VALUE_ZERO }
-  //{ VALUE_ZERO, VALUE_ZERO,
-  //  VALUE_ZERO, VALUE_ZERO },
-  //{ VALUE_ZERO, VALUE_ZERO,
-  //  VALUE_ZERO, VALUE_ZERO }
+  //{ VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO,
+  //  VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, VALUE_ZERO },
+  //{ VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, VALUE_ZERO, VALUE_ZERO,
+  //  VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, VALUE_ZERO, VALUE_ZERO }
+  { VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+    VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO },
+  { VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO,
+    VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO, VALUE_ZERO }
 };
 
 
@@ -431,7 +427,7 @@ inline Color color_of(Piece pc) {
 
 //内側6*6を許可
 constexpr bool is_ok(Square s) {
-  return s >= SQ_B2 && s <= SQ_G7;
+  return s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7;
 }
 
 constexpr File file_of(Square s) {
