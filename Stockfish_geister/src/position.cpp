@@ -44,11 +44,12 @@ namespace Zobrist {
 
 namespace {
 
-const string PieceToChar(" PNBRQK  pnbrqk");
+const string PieceToChar(" BRPG    brpg  ");
 
-constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                             B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
-//constexpr Piece Pieces[] = { W_KING, B_KING };
+//constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+//                             B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
+constexpr Piece Pieces[] = { W_BLUE, W_RED, W_PURPLE, W_GOAL,
+                             B_BLUE, B_RED, B_PURPLE, B_GOAL };
 } // namespace
 
 
@@ -131,25 +132,30 @@ void Position::init() {
   std::memset(cuckooMove, 0, sizeof(cuckooMove));
   int count = 0;
   for (Piece pc : Pieces)
-      for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-          for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
-              //if ((type_of(pc) != PAWN) && (attacks_bb(type_of(pc), s1, 0) & s2))
-            if ((attacks_bb(type_of(pc), s1, 0) & s2))
-              {
-                  Move move = make_move(s1, s2);
-                  Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-                  int i = H1(key);
-                  while (true)
-                  {
-                      std::swap(cuckoo[i], key);
-                      std::swap(cuckooMove[i], move);
-                      if (move == MOVE_NONE) // Arrived at empty slot?
-                          break;
-                      i = (i == H1(key)) ? H2(key) : H1(key); // Push victim to alternative slot
-                  }
-                  count++;
-             }
-  assert(count == 3668);
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1) {
+      if (!is_ok_dist(s1)) continue;
+      for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2) {
+        if (!is_ok_dist(s2)) continue;
+        //if ((type_of(pc) != PAWN) && (attacks_bb(type_of(pc), s1, 0) & s2))
+        if ((attacks_bb(type_of(pc), s1, 0) & s2))
+        {
+          Move move = make_move(s1, s2);
+          Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
+          int i = H1(key);
+          while (true)
+          {
+            std::swap(cuckoo[i], key);
+            std::swap(cuckooMove[i], move);
+            if (move == MOVE_NONE) // Arrived at empty slot?
+              break;
+            i = (i == H1(key)) ? H2(key) : H1(key); // Push victim to alternative slot
+          }
+          count++;
+        }
+      }
+    }
+  //assert(count == 3668);
+  //ª‚í‚©‚è‚Ü‚¹‚ñ
 }
 
 
@@ -332,8 +338,9 @@ void Position::set_check_info(StateInfo* si) const {
   //si->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
   //si->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
   //si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  si->checkSquares[BLUE]     = 0;
-  si->checkSquares[RED]      = 0;
+  const Square* ksq = squares<GOAL>(~sideToMove);
+  si->checkSquares[BLUE]     = attacks_bb<BLUE>(ksq[0]) | attacks_bb<BLUE>(ksq[1]);
+  si->checkSquares[RED]      = attacks_bb<RED>(ksq[0]) | attacks_bb<RED>(ksq[1]);
 }
 
 
@@ -635,7 +642,8 @@ bool Position::pseudo_legal(const Move m) const {
           //    return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
-          if (!((between_bb(lsb(checkers()), square<GOAL>(us)) | checkers()) & to))
+          //if (!((between_bb(lsb(checkers()), square<GOAL>(us)) | checkers()) & to))
+          if (!(checkers() & to))
               return false;
       }
       // In case of king moves under check we have to remove king so as to catch
@@ -665,7 +673,7 @@ bool Position::gives_check(Move m) const {
   // Is there a discovered check?
   if (   (blockers_for_king(~sideToMove) & from)
       //&& !aligned(from, to, square<KING>(~sideToMove)))
-      && !aligned(from, to, square<GOAL>(~sideToMove)))
+      )
       return true;
 
   switch (type_of(m))
@@ -1263,7 +1271,8 @@ bool Position::has_game_cycle(int ply) const {
           Square s1 = from_sq(move);
           Square s2 = to_sq(move);
 
-          if (!(between_bb(s1, s2) & pieces()))
+          //if (!(between_bb(s1, s2) & pieces()))
+          if (true)
           {
               if (ply > i)
                   return true;
@@ -1340,8 +1349,10 @@ bool Position::pos_is_ok() const {
   if (Fast)
       return true;
 
-  if (   pieceCount[W_KING] != 1
-      || pieceCount[B_KING] != 1
+  if (   //pieceCount[W_KING] != 1
+      //|| pieceCount[B_KING] != 1
+         pieceCount[W_GOAL] != 2
+      || pieceCount[B_GOAL] != 2
       //|| attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
       || attackers_to(square<GOAL>(~sideToMove)) & pieces(sideToMove))
       assert(0 && "pos_is_ok: Kings");

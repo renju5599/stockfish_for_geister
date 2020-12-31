@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef false
+
 #ifndef MATERIAL_H_INCLUDED
 #define MATERIAL_H_INCLUDED
 
@@ -69,3 +71,5 @@ Entry* probe(const Position& pos);
 } // namespace Material
 
 #endif // #ifndef MATERIAL_H_INCLUDED
+
+#endif // #ifdef false

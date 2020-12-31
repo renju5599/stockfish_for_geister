@@ -51,7 +51,7 @@ namespace Tablebases {
 namespace TB = Tablebases;
 
 using std::string;
-using Eval::evaluate;
+using Eval::evaluate_P;
 using namespace Search;
 
 namespace {
@@ -225,7 +225,7 @@ void MainThread::search() {
   Time.init(Limits, us, rootPos.game_ply());
   TT.new_search();
 
-  Eval::NNUE::verify();
+  //Eval::NNUE::verify();
 
   if (rootMoves.empty())
   {
@@ -626,7 +626,7 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos)
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos)
                                                         : value_draw(pos.this_thread());
             //return VALUE_NONE;
 
@@ -782,7 +782,7 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = evaluate_P(pos);
             //ss->staticEval = eval = VALUE_NONE;
 
         if (eval == VALUE_DRAW)
@@ -796,7 +796,7 @@ namespace {
     else
     {
         if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate(pos);
+            ss->staticEval = eval = evaluate_P(pos);
             //ss->staticEval = eval = VALUE_NONE;
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
@@ -1193,7 +1193,9 @@ moves_loop: // When in check, search starts from here
               // hence break make_move(). (~2 Elo)
               else if (    type_of(move) == NORMAL
                        && !pos.see_ge(reverse_move(move)))
-                  r -= 2 + ss->ttPv - (type_of(movedPiece) == PAWN);
+                  //r -= 2 + ss->ttPv - (type_of(movedPiece) == PAWN);
+                  r -= 2 + ss->ttPv;
+                  //ª‚±‚ê‰½ŒÌPAWN???
 
               ss->statScore =  thisThread->mainHistory[us][from_to(move)]
                              + (*contHist[0])[movedPiece][to_sq(move)]
@@ -1429,7 +1431,7 @@ moves_loop: // When in check, search starts from here
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : VALUE_DRAW;
+        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos) : VALUE_DRAW;
         //return (ss->ply >= MAX_PLY && !ss->inCheck) ? VALUE_NONE : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
@@ -1466,7 +1468,7 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate(pos);
+                ss->staticEval = bestValue = evaluate_P(pos);
                 //ss->staticEval = bestValue = VALUE_NONE;
 
             // Can ttValue be used as a better position evaluation?
@@ -1476,7 +1478,7 @@ moves_loop: // When in check, search starts from here
         }
         else
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate(pos)
+            (ss-1)->currentMove != MOVE_NULL ? evaluate_P(pos)
             //(ss - 1)->currentMove != MOVE_NULL ? VALUE_NONE
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
@@ -1773,7 +1775,8 @@ moves_loop: // When in check, search starts from here
 
     // RootMoves are already sorted by score in descending order
     Value topScore = rootMoves[0].score;
-    int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
+    //int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
+    int delta = topScore - rootMoves[multiPV - 1].score;
     int weakness = 120 - 2 * level;
     int maxScore = -VALUE_INFINITE;
 

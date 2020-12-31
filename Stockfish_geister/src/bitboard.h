@@ -1,7 +1,3 @@
-//コメント化されたコードは、元のコード（←このコメントは"手を付けた"アピール）
-//まだおわってないよ
-//bitboardいじらない方がよさそう？そのままのbit使って範囲を小さくします
-
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -210,11 +206,12 @@ constexpr Bitboard adjacent_files_bb(Square s) {
 /// are not on a same file/rank/diagonal, the function returns 0. For instance,
 /// line_bb(SQ_C4, SQ_F7) will return a bitboard with the A2-G8 diagonal.
 
-inline Bitboard line_bb(Square s1, Square s2) {
-
-  assert(is_ok(s1) && is_ok(s2));
-  return LineBB[s1][s2];
-}
+// BishopとかRookの特徴のヤツ
+//inline Bitboard line_bb(Square s1, Square s2) {
+//
+//  assert(is_ok(s1) && is_ok(s2));
+//  return LineBB[s1][s2];
+//}
 
 
 /// between_bb() returns a bitboard representing squares that are linearly
@@ -222,10 +219,11 @@ inline Bitboard line_bb(Square s1, Square s2) {
 /// squares are not on a same file/rank/diagonal, we return 0. For instance,
 /// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5 and E6.
 
-inline Bitboard between_bb(Square s1, Square s2) {
-  Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
-  return b & (b - 1); //exclude lsb
-}
+// line_bb == 0 になるから要らなそう
+//inline Bitboard between_bb(Square s1, Square s2) {
+//  Bitboard b = line_bb(s1, s2) & ((AllSquares << s1) ^ (AllSquares << s2));
+//  return b & (b - 1); //exclude lsb
+//}
 
 
 /// forward_ranks_bb() returns a bitboard representing the squares on the ranks
@@ -266,9 +264,10 @@ constexpr Bitboard passed_pawn_span(Color c, Square s) {
 /// aligned() returns true if the squares s1, s2 and s3 are aligned either on a
 /// straight or on a diagonal line.
 
-inline bool aligned(Square s1, Square s2, Square s3) {
-  return line_bb(s1, s2) & s3;
-}
+// line_bb == 0　になるから
+//inline bool aligned(Square s1, Square s2, Square s3) {
+//  return line_bb(s1, s2) & s3;
+//}
 
 
 /// distance() functions return the distance between x and y, defined as the

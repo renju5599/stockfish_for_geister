@@ -180,17 +180,22 @@ enum Value : int {
   VALUE_TB_LOSS_IN_MAX_PLY = -VALUE_TB_WIN_IN_MAX_PLY,
   VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY,
   VALUE_MATED_IN_MAX_PLY = -VALUE_MATE_IN_MAX_PLY,
+  
+  ExistWeight = 1000,
+  DistWeight = 1,
 
-  PawnValueMg   = 126,   PawnValueEg   = 208,
-  KnightValueMg = 781,   KnightValueEg = 854,
-  BishopValueMg = 825,   BishopValueEg = 915,
-  RookValueMg   = 1276,  RookValueEg   = 1380,
-  QueenValueMg  = 2538,  QueenValueEg  = 2682,
+  RePawnValueMg = 126, RePawnValueEg = 208,
+  //PawnValueMg   = 126,   PawnValueEg   = 208,
+  //KnightValueMg = 781,   KnightValueEg = 854,
+  //BishopValueMg = 825,   BishopValueEg = 915,
+  //RookValueMg   = 1276,  RookValueEg   = 1380,
+  //QueenValueMg  = 2538,  QueenValueEg  = 2682,
   Tempo = 28,
 
   MidgameLimit  = 15258, EndgameLimit  = 3915
 };
 
+//"名前の変更"でKINGをGOALにした
 enum PieceType {
   //NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
   //ALL_PIECES = 0,
@@ -425,9 +430,13 @@ inline Color color_of(Piece pc) {
   return Color(pc >> 3);
 }
 
-//内側6*6を許可
+//用途が移動だけではなかったので残す
 constexpr bool is_ok(Square s) {
-  return s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7;
+  return s >= SQ_A1 && s <= SQ_H8;
+}
+//内側6*6とゴールを許可
+constexpr bool is_ok_dist(Square s) {
+  return (s == SQ_A2 || s == SQ_A7 || s == SQ_H2 || s == SQ_H7) || (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
 }
 
 constexpr File file_of(Square s) {
@@ -470,9 +479,10 @@ constexpr MoveType type_of(Move m) {
   return MoveType(m & (3 << 14));
 }
 
-constexpr PieceType promotion_type(Move m) {
-  return PieceType(((m >> 12) & 3) + KNIGHT);
-}
+
+//constexpr PieceType promotion_type(Move m) {
+//  return PieceType(((m >> 12) & 3) + KNIGHT);
+//}
 
 constexpr Move make_move(Square from, Square to) {
   return Move((from << 6) + to);
@@ -487,8 +497,8 @@ constexpr Move reverse_move(Move m) {
 //  return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 //}
 template<MoveType T>
-constexpr Move make(Square from, Square to, PieceType pt = KING) {
-  return Move(T + ((pt - KING) << 12) + (from << 6) + to);
+constexpr Move make(Square from, Square to, PieceType pt = GOAL) {
+  return Move(T + ((pt - GOAL) << 12) + (from << 6) + to);
 }
 
 constexpr bool is_ok(Move m) {

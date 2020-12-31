@@ -155,7 +155,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\AI.cpp" />
     <ClCompile Include="src\benchmark.cpp" />
     <ClCompile Include="src\bitbase.cpp" />
     <ClCompile Include="src\bitboard.cpp" />
@@ -187,8 +186,6 @@
     <ClInclude Include="src\bitboard.h" />
     <ClInclude Include="src\endgame.h" />
     <ClInclude Include="src\evaluate.h" />
-    <ClInclude Include="src\KanzenBoard.h" />
-    <ClInclude Include="src\KanzenSearch.h" />
     <ClInclude Include="src\material.h" />
     <ClInclude Include="src\misc.h" />
     <ClInclude Include="src\MoveCommand.h" />

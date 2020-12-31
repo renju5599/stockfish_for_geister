@@ -228,7 +228,8 @@ namespace {
         case EVASIONS:
         {
             Square checksq = lsb(pos.checkers());
-            target = between_bb(pos.square<KING>(Us), checksq) | checksq;
+            //target = between_bb(pos.square<GOAL>(Us), checksq) | checksq;
+            target = checksq;
             break;
         }
         case NON_EVASIONS:
@@ -246,10 +247,20 @@ namespace {
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
     {
-        Square ksq = pos.square<KING>(Us);
-        Bitboard b = attacks_bb<KING>(ksq) & target;
-        while (b)
-            *moveList++ = make_move(ksq, pop_lsb(&b));
+        //Square ksq = pos.square<GOAL>(Us);
+        //Bitboard b = attacks_bb<GOAL>(ksq) & target;
+        const Square* ksqs = pos.squares<GOAL>(Us);
+        //Bitboard b = 0;
+        //b |= attacks_bb<GOAL>(from) & target;
+        //while (b)
+        //  *moveList++ = make_move(ksq, pop_lsb(&b));
+        for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs)
+        {
+          Bitboard b = 0;
+          b |= attacks_bb<GOAL>(from) & target;
+          while (b)
+            *moveList++ = make_move(from, pop_lsb(&b));
+        }
 
         /*
         if ((Type != CAPTURES) && pos.can_castle(Us & ANY_CASTLING))
@@ -327,7 +338,9 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   assert(pos.checkers());
 
   Color us = pos.side_to_move();
-  Square ksq = pos.square<KING>(us);
+  //Square ksq = pos.square<KING>(us);
+  const Square* ksqs = pos.squares<GOAL>(us);
+
   //Bitboard sliderAttacks = 0;
   //Bitboard sliders = pos.checkers() & ~pos.pieces(KNIGHT, PAWN);
 
@@ -338,10 +351,17 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   //    sliderAttacks |= line_bb(ksq, pop_lsb(&sliders)) & ~pos.checkers();
 
   // Generate evasions for king, capture and non capture moves
+  //Bitboard b = 0;
   //Bitboard b = attacks_bb<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
-  Bitboard b = attacks_bb<KING>(ksq) & ~pos.pieces(us);
-  while (b)
-      *moveList++ = make_move(ksq, pop_lsb(&b));
+  //while (b)
+  //  *moveList++ = make_move(from, pop_lsb(&b));
+  for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs)
+  {
+    Bitboard b = 0;
+    b |= attacks_bb<GOAL>(from) & ~pos.pieces(us);
+    while (b)
+      *moveList++ = make_move(from, pop_lsb(&b));
+  }
 
   if (more_than_one(pos.checkers()))
       return moveList; // Double check, only a king move can save the day
@@ -359,14 +379,18 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
 
   Color us = pos.side_to_move();
   Bitboard pinned = pos.blockers_for_king(us) & pos.pieces(us);
-  Square ksq = pos.square<KING>(us);
+  //Square ksq = pos.square<KING>(us);
+  const Square* ksqs = pos.squares<GOAL>(us);
+
   ExtMove* cur = moveList;
 
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)
                             : generate<NON_EVASIONS>(pos, moveList);
+  // while“I‚É‚ ‚â‚µ‚·‚¬‚é
   while (cur != moveList)
+    for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs)
       //if (   (pinned || from_sq(*cur) == ksq || type_of(*cur) == ENPASSANT)
-    if ((pinned || from_sq(*cur) == ksq)
+    if ((pinned || from_sq(*cur) == from)
           && !pos.legal(*cur))
           *cur = (--moveList)->move;
       else

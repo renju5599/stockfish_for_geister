@@ -1,7 +1,3 @@
-//コメント化されたコードは、元のコード（←このコメントは"手を付けた"アピール）
-//まだおわってないよ
-//駒はKINGのみにする
-
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
@@ -52,7 +48,7 @@ Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
 inline Bitboard safe_destination(Square s, int step) {
     Square to = Square(s + step);
-    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_dist(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
 }
 
 

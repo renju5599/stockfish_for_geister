@@ -65,7 +65,7 @@ namespace Eval::NNUE::Features {
         for (Color perspective : { WHITE, BLACK }) {
           switch (trigger) {
             case TriggerEvent::kFriendKingMoved:
-              reset[perspective] = dp.piece[0] == make_piece(perspective, KING);
+              reset[perspective] = dp.piece[0] == make_piece(perspective, GOAL);
               break;
             default:
               assert(false);
@@ -86,8 +86,8 @@ namespace Eval::NNUE::Features {
         for (Color perspective : { WHITE, BLACK }) {
           switch (trigger) {
             case TriggerEvent::kFriendKingMoved:
-              reset[perspective] = dp1.piece[0] == make_piece(perspective, KING)
-                                || dp2.piece[0] == make_piece(perspective, KING);
+              reset[perspective] = dp1.piece[0] == make_piece(perspective, GOAL)
+                                || dp2.piece[0] == make_piece(perspective, GOAL);
               break;
             default:
               assert(false);

@@ -26,6 +26,7 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+#include "evaluate.h"
 
 /*
 namespace PSQT {
@@ -43,11 +44,13 @@ int main(int argc, char* argv[]) {
   //PSQT::init();
   Bitboards::init();
   Position::init();
-  Bitbases::init();
+  //Bitbases::init();
   //Endgames::init();
   Threads.set(size_t(Options["Threads"]));
   Search::clear(); // After threads are up
   //Eval::NNUE::init();
+  Eval::init();
+  
 
   UCI::loop(argc, argv);
 

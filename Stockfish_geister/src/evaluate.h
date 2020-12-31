@@ -56,10 +56,6 @@ namespace Eval {
 #ifndef EVALUATE_H_INCLUDED
 #define EVALUATE_H_INCLUDED
 
-#include <string>
-
-#include "MoveCommand.h"
-#include "KanzenBoard.h"
 #include "types.h"
 
 class Position;
@@ -67,64 +63,10 @@ class Position;
 
 namespace Eval {
 
-  std::string trace(const Position& pos);
-  Value evaluate(const Position& pos);
+  void init();
 
-  //逃げ, 追いかけの判定
-  bool isNige(char board[][6], MoveCommand te);
-
-  bool isOikake(char board[][6], MoveCommand te);
-
-  //逃げ, 追いかけの回数
-  void AddNigeR(bool printLog = false);
-  void AddNigeB(bool printLog = false);
-  void AddOikakeR(bool printLog = false);
-  void AddOikakeB(bool printLog = false);
-
-
-  //BEGIN: 赤度を推定する系統
-  namespace Red {
-    int histCnt;
-    char hist[350][6][6];	//R, B, u
-    double eval[350][6][6];	//赤度
-
-    void moveHist(char prev[6][6], char now[6][6], MoveCommand mv);
-    void moveEval(double prev[6][6], double now[6][6], MoveCommand mv);
-    MoveCommand detectMove(char prev[6][6], char now[6][6]);
-    int toDir(int y, int x, int ny, int nx);
-
-    //自分が手を打ったときに呼び出す
-    void myMove(MoveCommand mv);
-
-    //2手目以降の自分手番の最初に呼び出す。
-    void myTurn(char board[6][6]);
-
-    //myMoveとかmyTurnとかを呼び出した直後に呼び出したい。
-    //赤度evalが閾値以上になった赤の現在位置を、赤度が大きいものからリストアップ
-    int listUpRed(int posY[], int posX[], int X);
-
-    void moveHist(char prev[6][6], char now[6][6], MoveCommand mv);
-
-    void moveEval(double prev[6][6], double now[6][6], MoveCommand mv);
-
-    MoveCommand detectMove(char prev[6][6], char now[6][6]);
-
-    int toDir(int y, int x, int ny, int nx);
-  }
-  //END
-
-
-  //それ以外全部青！
-  std::pair<MoveCommand, int> thinkKanzen(int X);
-
-  //紫駒
-  std::pair<MoveCommand, int> thinkPurple();
-
-  //手を決める
-  std::pair<MoveCommand, int> thinkMove();
-
-  //手を決めるのと、いろんな処理
-  std::string solve(int turnCnt);
+  Value evaluate_K(const Position& pos);
+  Value evaluate_P(const Position& pos);
 
 }
 

@@ -39,7 +39,8 @@ extern vector<string> setup_bench(const Position&, istream&);
 namespace {
 
   // FEN string of the initial position, normal chess
-  const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  //const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  const char* StartFEN = "8/2pppp2/2pppp2/8/8/2RRRR2/2BBBB2/8 w KQkq - 0 1";
 
 
   // position() is called when engine receives the "position" UCI command.
@@ -211,7 +212,7 @@ namespace {
      double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
 
      // Transform eval to centipawns with limited range
-     double x = std::clamp(double(100 * v) / PawnValueEg, -1000.0, 1000.0);
+     double x = std::clamp(double(100 * v) / RePawnValueEg, -1000.0, 1000.0);
 
      // Return win rate in per mille (rounded to nearest)
      return int(0.5 + 1000 / (1 + std::exp((a - x) / b)));
@@ -296,7 +297,7 @@ string UCI::value(Value v) {
   stringstream ss;
 
   if (abs(v) < VALUE_MATE_IN_MAX_PLY)
-      ss << "cp " << v * 100 / PawnValueEg;
+      ss << "cp " << v * 100 / RePawnValueEg;
   else
       ss << "mate " << (v > 0 ? VALUE_MATE - v + 1 : -VALUE_MATE - v) / 2;
 

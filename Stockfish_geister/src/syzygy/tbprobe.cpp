@@ -67,7 +67,7 @@ enum TBFlag { STM = 1, Mapped = 2, WinPlies = 4, LossPlies = 8, Wide = 16, Singl
 inline WDLScore operator-(WDLScore d) { return WDLScore(-int(d)); }
 inline Square operator^(Square s, int i) { return Square(int(s) ^ i); }
 
-const std::string PieceToChar = " PNBRQK  pnbrqk";
+const std::string PieceToChar = " BRPG    brpg  ";
 
 int MapPawns[SQUARE_NB];
 int MapB1H1H7[SQUARE_NB];
@@ -370,18 +370,22 @@ TBTable<WDL>::TBTable(const std::string& code) : TBTable() {
 
     hasUniquePieces = false;
     for (Color c : { WHITE, BLACK })
-        for (PieceType pt = PAWN; pt < KING; ++pt)
+        //for (PieceType pt = PAWN; pt < KING; ++pt)
+        for (PieceType pt = BLUE; pt < GOAL; ++pt)
             if (popcount(pos.pieces(c, pt)) == 1)
                 hasUniquePieces = true;
 
     // Set the leading color. In case both sides have pawns the leading color
     // is the side with less pawns because this leads to better compression.
+
+    /*
     bool c =   !pos.count<PAWN>(BLACK)
             || (   pos.count<PAWN>(WHITE)
                 && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
 
     pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
     pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+    */
 
     key2 = pos.set(code, BLACK, &st).material_key();
 }
@@ -1153,7 +1157,7 @@ void* mapped(TBTable<Type>& e, const Position& pos) {
 
     // Pieces strings in decreasing order for each color, like ("KPP","KR")
     std::string fname, w, b;
-    for (PieceType pt = KING; pt >= PAWN; --pt) {
+    for (PieceType pt = GOAL; pt >= BLUE; --pt) {
         w += std::string(popcount(pos.pieces(WHITE, pt)), PieceToChar[pt]);
         b += std::string(popcount(pos.pieces(BLACK, pt)), PieceToChar[pt]);
     }
@@ -1209,7 +1213,9 @@ WDLScore search(Position& pos, ProbeState* result) {
     for (const Move move : moveList)
     {
         if (   !pos.capture(move)
-            && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
+            //&& (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
+            && (!CheckZeroingMoves))
+            //Å™Ç±ÇÍâΩåÃPAWN???
             continue;
 
         moveCount++;
@@ -1304,7 +1310,8 @@ void Tablebases::init(const std::string& paths) {
             if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1)) // SQ_B1 is mapped to 0
             {
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-                    if ((PseudoAttacks[KING][s1] | s1) & s2)
+                    //if ((PseudoAttacks[KING][s1] | s1) & s2)
+                  if ((PseudoAttacks[GOAL][s1] | s1) & s2)
                         continue; // Illegal position
 
                     else if (!off_A1H8(s1) && off_A1H8(s2) > 0)
@@ -1369,41 +1376,77 @@ void Tablebases::init(const std::string& paths) {
         }
 
     // Add entries in TB tables if the corresponding ".rtbw" file exists
-    for (PieceType p1 = PAWN; p1 < KING; ++p1) {
-        TBTables.add({KING, p1, KING});
+    //for (PieceType p1 = PAWN; p1 < KING; ++p1) {
+    //    TBTables.add({KING, p1, KING});
 
-        for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
-            TBTables.add({KING, p1, p2, KING});
-            TBTables.add({KING, p1, KING, p2});
+    //    for (PieceType p2 = PAWN; p2 <= p1; ++p2) {
+    //        TBTables.add({KING, p1, p2, KING});
+    //        TBTables.add({KING, p1, KING, p2});
 
-            for (PieceType p3 = PAWN; p3 < KING; ++p3)
-                TBTables.add({KING, p1, p2, KING, p3});
+    //        for (PieceType p3 = PAWN; p3 < KING; ++p3)
+    //            TBTables.add({KING, p1, p2, KING, p3});
 
-            for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
-                TBTables.add({KING, p1, p2, p3, KING});
+    //        for (PieceType p3 = PAWN; p3 <= p2; ++p3) {
+    //            TBTables.add({KING, p1, p2, p3, KING});
 
-                for (PieceType p4 = PAWN; p4 <= p3; ++p4) {
-                    TBTables.add({KING, p1, p2, p3, p4, KING});
+    //            for (PieceType p4 = PAWN; p4 <= p3; ++p4) {
+    //                TBTables.add({KING, p1, p2, p3, p4, KING});
 
-                    for (PieceType p5 = PAWN; p5 <= p4; ++p5)
-                        TBTables.add({KING, p1, p2, p3, p4, p5, KING});
+    //                for (PieceType p5 = PAWN; p5 <= p4; ++p5)
+    //                    TBTables.add({KING, p1, p2, p3, p4, p5, KING});
 
-                    for (PieceType p5 = PAWN; p5 < KING; ++p5)
-                        TBTables.add({KING, p1, p2, p3, p4, KING, p5});
-                }
+    //                for (PieceType p5 = PAWN; p5 < KING; ++p5)
+    //                    TBTables.add({KING, p1, p2, p3, p4, KING, p5});
+    //            }
 
-                for (PieceType p4 = PAWN; p4 < KING; ++p4) {
-                    TBTables.add({KING, p1, p2, p3, KING, p4});
+    //            for (PieceType p4 = PAWN; p4 < KING; ++p4) {
+    //                TBTables.add({KING, p1, p2, p3, KING, p4});
 
-                    for (PieceType p5 = PAWN; p5 <= p4; ++p5)
-                        TBTables.add({KING, p1, p2, p3, KING, p4, p5});
-                }
-            }
+    //                for (PieceType p5 = PAWN; p5 <= p4; ++p5)
+    //                    TBTables.add({KING, p1, p2, p3, KING, p4, p5});
+    //            }
+    //        }
 
-            for (PieceType p3 = PAWN; p3 <= p1; ++p3)
-                for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
-                    TBTables.add({KING, p1, p2, KING, p3, p4});
+    //        for (PieceType p3 = PAWN; p3 <= p1; ++p3)
+    //            for (PieceType p4 = PAWN; p4 <= (p1 == p3 ? p2 : p3); ++p4)
+    //                TBTables.add({KING, p1, p2, KING, p3, p4});
+    //    }
+    //}
+    for (PieceType p1 = BLUE; p1 < GOAL; ++p1) {
+      TBTables.add({ GOAL, p1, GOAL });
+
+      for (PieceType p2 = BLUE; p2 <= p1; ++p2) {
+        TBTables.add({ GOAL, p1, p2, GOAL });
+        TBTables.add({ GOAL, p1, GOAL, p2 });
+
+        for (PieceType p3 = BLUE; p3 < GOAL; ++p3)
+          TBTables.add({ GOAL, p1, p2, GOAL, p3 });
+
+        for (PieceType p3 = BLUE; p3 <= p2; ++p3) {
+          TBTables.add({ GOAL, p1, p2, p3, GOAL });
+
+          for (PieceType p4 = BLUE; p4 <= p3; ++p4) {
+            TBTables.add({ GOAL, p1, p2, p3, p4, GOAL });
+
+            for (PieceType p5 = BLUE; p5 <= p4; ++p5)
+              TBTables.add({ GOAL, p1, p2, p3, p4, p5, GOAL });
+
+            for (PieceType p5 = BLUE; p5 < GOAL; ++p5)
+              TBTables.add({ GOAL, p1, p2, p3, p4, GOAL, p5 });
+          }
+
+          for (PieceType p4 = BLUE; p4 < GOAL; ++p4) {
+            TBTables.add({ GOAL, p1, p2, p3, GOAL, p4 });
+
+            for (PieceType p5 = BLUE; p5 <= p4; ++p5)
+              TBTables.add({ GOAL, p1, p2, p3, GOAL, p4, p5 });
+          }
         }
+
+        for (PieceType p3 = BLUE; p3 <= p1; ++p3)
+          for (PieceType p4 = BLUE; p4 <= (p1 == p3 ? p2 : p3); ++p4)
+            TBTables.add({ GOAL, p1, p2, GOAL, p3, p4 });
+      }
     }
 
     sync_cout << "info string Found " << TBTables.size() << " tablebases" << sync_endl;
@@ -1570,9 +1613,9 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves) {
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
         m.tbScore =  r >= bound ? VALUE_MATE - MAX_PLY - 1
-                   : r >  0     ? Value((std::max( 3, r - 800) * int(PawnValueEg)) / 200)
+                   : r >  0     ? Value((std::max( 3, r - 800) * int(RePawnValueEg)) / 200)
                    : r == 0     ? VALUE_DRAW
-                   : r > -bound ? Value((std::min(-3, r + 800) * int(PawnValueEg)) / 200)
+                   : r > -bound ? Value((std::min(-3, r + 800) * int(RePawnValueEg)) / 200)
                    :             -VALUE_MATE + MAX_PLY + 1;
     }
 
