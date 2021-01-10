@@ -1,3 +1,6 @@
+#ifndef GAME_GEISTER_H_INCLUDED
+#define GAME_GEISTER_H_INCLUDED
+
 #pragma once
 #include <string>
 
@@ -119,3 +122,4 @@ namespace Game_
 		return ret;
 	}
 }
+#endif

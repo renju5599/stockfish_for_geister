@@ -436,7 +436,7 @@ constexpr bool is_ok(Square s) {
 }
 //“à‘¤6*6‚ÆƒS[ƒ‹‚ð‹–‰Â
 constexpr bool is_ok_dist(Square s) {
-  return (s == SQ_A2 || s == SQ_A7 || s == SQ_H2 || s == SQ_H7) || (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
+  return (s == SQ_B1 || s == SQ_B8 || s == SQ_G1 || s == SQ_G8) || (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
 }
 
 constexpr File file_of(Square s) {

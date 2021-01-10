@@ -17,6 +17,7 @@
 */
 
 #include <iostream>
+#include <assert.h>
 
 #include "bitboard.h"
 #include "endgame.h"
@@ -39,7 +40,14 @@ int main(int argc, char* argv[]) {
   std::cout << engine_info() << std::endl;
 
   CommandLine::init(argc, argv);
-  UCI::init(Options);
+  //UCI::init(Options);
+
+  int n, port; std::string destination;
+  int dstSocket;
+  std::cout << "対戦回数 ポート番号 IPアドレスを入力↓" << std::endl;
+  std::cin >> n >> port >> destination;
+  assert(tcp::openPort(dstSocket, port, destination));
+
   Tune::init();
   //PSQT::init();
   Bitboards::init();

@@ -41,13 +41,13 @@ namespace Eval::NNUE::Features {
   void HalfKP<AssociatedKing>::AppendActiveIndices(
       const Position& pos, Color perspective, IndexList* active) {
 
-    //Square ksq = orient(perspective, pos.square<GOAL>(perspective));
-    const Square* ksqs = orient(perspective, pos.squares<GOAL>(perspective));
+    const Square* ksqs = pos.squares<GOAL>(perspective);
     for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs) {
+      Square ksq = orient(perspective, from);
       Bitboard bb = pos.pieces() & ~pos.pieces(GOAL);
       while (bb) {
         Square s = pop_lsb(&bb);
-        active->push_back(MakeIndex(perspective, s, pos.piece_on(s), from));
+        active->push_back(MakeIndex(perspective, s, pos.piece_on(s), ksq));
       }
     }
   }
@@ -58,14 +58,17 @@ namespace Eval::NNUE::Features {
       const Position& pos, const DirtyPiece& dp, Color perspective,
       IndexList* removed, IndexList* added) {
 
-    Square ksq = orient(perspective, pos.square<GOAL>(perspective));
-    for (int i = 0; i < dp.dirty_num; ++i) {
-      Piece pc = dp.piece[i];
-      if (type_of(pc) == GOAL) continue;
-      if (dp.from[i] != SQ_NONE)
-        removed->push_back(MakeIndex(perspective, dp.from[i], pc, ksq));
-      if (dp.to[i] != SQ_NONE)
-        added->push_back(MakeIndex(perspective, dp.to[i], pc, ksq));
+    const Square* ksqs = pos.squares<GOAL>(perspective);
+    for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs) {
+      Square ksq = orient(perspective, from);
+      for (int i = 0; i < dp.dirty_num; ++i) {
+        Piece pc = dp.piece[i];
+        if (type_of(pc) == GOAL) continue;
+        if (dp.from[i] != SQ_NONE)
+          removed->push_back(MakeIndex(perspective, dp.from[i], pc, ksq));
+        if (dp.to[i] != SQ_NONE)
+          added->push_back(MakeIndex(perspective, dp.to[i], pc, ksq));
+      }
     }
   }
 

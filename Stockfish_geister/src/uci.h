@@ -19,6 +19,8 @@
 #ifndef UCI_H_INCLUDED
 #define UCI_H_INCLUDED
 
+#ifdef false
+
 #include <map>
 #include <string>
 
@@ -77,5 +79,21 @@ Move to_move(const Position& pos, std::string& str);
 } // namespace UCI
 
 extern UCI::OptionsMap Options;
+
+#endif
+
+#include <string>
+
+namespace tcp {
+  void mySend(int dstSocket, std::string str = "");
+
+  std::string myRecv(int dstSocket);
+
+  bool openPort(int& dstSocket, int port = -1, std::string dest = "");
+
+  void closePort(int& dstSocket);
+
+  std::string setInitRedName(int allNum = 0, int redNum = 0, std::string initRedName = "");
+}
 
 #endif // #ifndef UCI_H_INCLUDED

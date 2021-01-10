@@ -44,7 +44,7 @@ namespace Zobrist {
 
 namespace {
 
-const string PieceToChar(" BRPG    brpg  ");
+const string PieceToChar(" BRUG    brug  ");
 
 //constexpr Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
 //                             B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
@@ -199,9 +199,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       incremented after Black's move.
 */
 
+
   unsigned char col, row, token;
   size_t idx;
-  Square sq = SQ_A8;
+  Square sq = SQUARE_ZERO;
   std::istringstream ss(fenStr);
 
   std::memset(this, 0, sizeof(Position));
@@ -212,7 +213,30 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   ss >> std::noskipws;
 
   // 1. Piece placement
-  while ((ss >> token) && !isspace(token))
+  put_piece(W_GOAL, SQ_B8);
+  put_piece(W_GOAL, SQ_G8);
+  put_piece(B_GOAL, SQ_B1);
+  put_piece(B_GOAL, SQ_G1);
+
+  int in_cnt = 0;
+  while (ss >> token) {
+    if (isdigit(token)) {
+      if (in_cnt == 0) {
+        sq += (token - '0' + 1) * EAST;
+      }
+      else {
+        sq += (token - '0' + 1) * NORTH;
+      }
+      ++in_cnt;
+    }
+    else if ((idx = PieceToChar.find(token)) != string::npos) {
+      put_piece(Piece(idx), sq);
+      sq = SQUARE_ZERO;
+      in_cnt = 0;
+    }
+  }
+
+  /*while ((ss >> token) && !isspace(token))
   {
       if (isdigit(token))
           sq += (token - '0') * EAST; // Advance the given number of files
@@ -224,7 +248,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           put_piece(Piece(idx), sq);
           ++sq;
       }
-  }
+  }*/
 
   // 2. Active color
   ss >> token;
@@ -355,7 +379,11 @@ void Position::set_state(StateInfo* si) const {
   //si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   //si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
-  si->checkersBB = attackers_to(square<GOAL>(sideToMove)) & pieces(~sideToMove) & pieces(BLUE);
+  si->checkersBB = 0;
+  const Square* ksqs = squares<GOAL>(sideToMove);
+  for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
+    si->checkersBB |= attackers_to(ksq) & pieces(~sideToMove) & pieces(BLUE);
+  }
 
   set_check_info(si);
 
@@ -909,7 +937,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   st->key = k;
 
   // Calculate checkers bitboard (if move gives check)
-  st->checkersBB = givesCheck ? attackers_to(square<GOAL>(them)) & pieces(us) & pieces(BLUE) : 0;
+  st->checkersBB = 0;
+  const Square* ksqs = squares<GOAL>(them);
+  for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
+    st->checkersBB |= givesCheck ? attackers_to(ksq) & pieces(us) & pieces(BLUE) : 0;
+  }
 
   sideToMove = ~sideToMove;
 
@@ -1340,8 +1372,10 @@ bool Position::pos_is_ok() const {
   if (   (sideToMove != WHITE && sideToMove != BLACK)
       //|| piece_on(square<KING>(WHITE)) != W_KING
       //|| piece_on(square<KING>(BLACK)) != B_KING
-      || piece_on(square<GOAL>(WHITE)) != W_GOAL
-      || piece_on(square<GOAL>(BLACK)) != B_GOAL
+      || piece_on(squares<GOAL>(WHITE)[0]) != W_GOAL
+      || piece_on(squares<GOAL>(WHITE)[1]) != W_GOAL
+      || piece_on(squares<GOAL>(BLACK)[0]) != B_GOAL
+      || piece_on(squares<GOAL>(BLACK)[1]) != B_GOAL
       /*|| (   ep_square() != SQ_NONE
           && relative_rank(sideToMove, ep_square()) != RANK_6)*/)
       assert(0 && "pos_is_ok: Default");
@@ -1354,7 +1388,8 @@ bool Position::pos_is_ok() const {
          pieceCount[W_GOAL] != 2
       || pieceCount[B_GOAL] != 2
       //|| attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
-      || attackers_to(square<GOAL>(~sideToMove)) & pieces(sideToMove))
+      || attackers_to(squares<GOAL>(~sideToMove)[0]) & pieces(sideToMove)
+      || attackers_to(squares<GOAL>(~sideToMove)[1]) & pieces(sideToMove))
       assert(0 && "pos_is_ok: Kings");
 
   //if (   (pieces(PAWN) & (Rank1BB | Rank8BB))

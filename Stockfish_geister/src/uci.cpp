@@ -16,6 +16,9 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef false
+//#endif  //デバッグ時の応急処置
+
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -40,7 +43,8 @@ namespace {
 
   // FEN string of the initial position, normal chess
   //const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-  const char* StartFEN = "8/2pppp2/2pppp2/8/8/2RRRR2/2BBBB2/8 w KQkq - 0 1";
+  //const char* StartFEN = "1g4g1/2uuuu2/2uuuu2/8/8/2RRRR2/2BBBB2/1G4G1 w KQkq - 0 1";
+  const char* StartFEN = "14R24R34R44R15B25B35B45B41u31u21u11u40u30u20u10u";
 
 
   // position() is called when engine receives the "position" UCI command.
@@ -369,4 +373,164 @@ Move UCI::to_move(const Position& pos, string& str) {
           return m;
 
   return MOVE_NONE;
+}
+#endif
+
+#pragma once
+#pragma comment(lib, "wsock32.lib")
+#include <stdio.h>
+#include <string.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iostream>
+#include <string>
+
+#include "uci.h"
+#include "Game_geister.h"
+
+namespace tcp {
+  void mySend(int dstSocket, std::string str = "")
+  {
+    if (str.length() == 0) {	//null文字なら「入力」を受け付ける
+      std::cin >> str;
+    }
+    if (str.length() < 2 || str[str.length() - 2] != '\r' || str[str.length() - 1] != '\n') {	//\r\nが末尾になければ追加
+      str += '\r';
+      str += '\n';
+    }
+    int byte = send(dstSocket, str.c_str(), str.length(), 0);	//文字列を送信
+    if (byte <= 0) {
+      std::cout << "送信エラー" << std::endl;
+    }
+  }
+
+  std::string myRecv(int dstSocket)
+  {
+    char buffer[10];
+    std::string msg;
+
+    do {
+      int byte = recv(dstSocket, buffer, 1, 0);	//文字を受信
+
+      if (byte == 0) break;
+      if (byte < 0) { std::cout << "受信に失敗しました" << std::endl; return msg; }
+
+      msg += buffer[0];
+    } while (msg.length() < 2 || msg[msg.length() - 2] != '\r' || msg[msg.length() - 1] != '\n');
+
+    std::cout << "受信 = " << msg << std::endl;
+
+    return msg;
+  }
+
+  bool openPort(int& dstSocket, int port = -1, std::string dest = "")
+  {
+    // IP アドレス，ポート番号，ソケット，sockaddr_in 構造体
+    char destination[32];
+    struct sockaddr_in dstAddr;
+    int PORT;
+
+    // Windows の場合
+    WSADATA data;
+    WSAStartup(MAKEWORD(2, 0), &data);
+
+    // 相手先アドレスの入力と送る文字の入力
+    if (port == -1) {
+      printf("ポート番号は？：");
+      scanf("%d", &PORT);
+    }
+    else {
+      PORT = port;
+    }
+
+    if (dest.length() == 0) {
+      printf("サーバーマシンのIPは？:");
+      scanf("%s", destination);
+    }
+    else {
+      for (int i = 0; i < dest.size(); i++) destination[i] = dest[i];
+      destination[dest.size()] = '\0';
+    }
+
+    // sockaddr_in 構造体のセット
+    memset(&dstAddr, 0, sizeof(dstAddr));
+    dstAddr.sin_port = htons(PORT);
+    dstAddr.sin_family = AF_INET;
+    dstAddr.sin_addr.s_addr = inet_addr(destination);
+
+    // ソケットの生成
+    dstSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    //接続
+    if (connect(dstSocket, (struct sockaddr*)&dstAddr, sizeof(dstAddr))) {
+      printf("%s　に接続できませんでした\n", destination);
+      return false;
+    }
+    printf("%s に接続しました\n", destination);
+
+    return true;
+  }
+
+  void closePort(int& dstSocket)
+  {
+    // Windows でのソケットの終了
+    closesocket(dstSocket);
+    WSACleanup();
+  }
+
+
+  std::string setInitRedName(int allNum = 0, int redNum = 0, std::string initRedName = "") {
+    if (allNum == 8) return initRedName;
+    int ransu = rand() % (8 - allNum);
+    if (ransu < 4 - redNum) {
+      initRedName += (char)('A' + allNum);
+      return setInitRedName(allNum + 1, redNum + 1, initRedName);
+    }
+    else {
+      return setInitRedName(allNum + 1, redNum, initRedName);
+    }
+  }
+
+
+  //UCI::loop の代わりになるように動かそうと思っている
+  //進捗状況：ぴえん
+  int playGame(int port = -1, std::string destination = "") {
+    int dstSocket;
+
+    if (!openPort(dstSocket, port, destination)) return 0;
+    std::string initRedName = tcp::setInitRedName();
+    tcp::myRecv(dstSocket);							//SET ?の受信
+    tcp::mySend(dstSocket, "SET:" + initRedName);	//SET:EFGHのように入力 (して, [\r][\n][\0]を末尾につけて送信)
+    tcp::myRecv(dstSocket);							//OK, NGの受信
+
+    int turnCnt = 0;
+    int res;
+    std::string recv_msg;
+
+    while (1) {
+      recv_msg = tcp::myRecv(dstSocket);	//盤面の受信
+      res = Game_::isEnd(recv_msg);
+      if (res) break;					//終了判定
+
+      //position.cppに recvBoardを移植して、Threadとかをいじれるようにする？
+      Game_::recvBoard(recv_msg);			//駒を配置
+      //pos.set(recv_msg, false, &states->back(), Threads.main());
+
+      //どうしましょう（uci::loopを見て考えましょう）
+      std::string mv = solve(turnCnt);		//思考
+
+      tcp::mySend(dstSocket, mv);			//行動の送信
+      tcp::myRecv(dstSocket);				//ACKの受信
+      turnCnt += 2;
+    }
+
+    //終了の原因(Game.h)
+    //string s = Game_::getEndInfo(recv_msg);
+    //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
+    //endInfo[s]++;
+
+    tcp::closePort(dstSocket);
+    //red::saveGame();
+    return res;
+  }
 }
