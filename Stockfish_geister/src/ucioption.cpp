@@ -16,7 +16,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef false
 
 #include <algorithm>
 #include <cassert>
@@ -192,5 +191,3 @@ Option& Option::operator=(const string& v) {
 }
 
 } // namespace UCI
-
-#endif

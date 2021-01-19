@@ -72,8 +72,8 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
      << std::setfill('0') << std::setw(16) << pos.key()
      << std::setfill(' ') << std::dec << "\nCheckers: ";
 
-  for (Bitboard b = pos.checkers(); b; )
-      os << UCI::square(pop_lsb(&b)) << " ";
+  //for (Bitboard b = pos.checkers(); b; )
+  //    os << UCI::square(pop_lsb(&b)) << " ";
 
   if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       )//&& !pos.can_castle(ANY_CASTLING))
@@ -109,6 +109,8 @@ Move cuckooMove[8192];
 
 void Position::init() {
 
+
+
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
@@ -133,9 +135,10 @@ void Position::init() {
   int count = 0;
   for (Piece pc : Pieces)
     for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1) {
-      if (!is_ok_dist(s1)) continue;
+      if (!is_ok_R(s1)) continue;
       for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2) {
-        if (!is_ok_dist(s2)) continue;
+        if (!is_ok_B(s2)) continue;
+        if (!is_ok_R(s2) && pc == RED) continue;
         //if ((type_of(pc) != PAWN) && (attacks_bb(type_of(pc), s1, 0) & s2))
         if ((attacks_bb(type_of(pc), s1, 0) & s2))
         {
@@ -218,6 +221,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   put_piece(B_GOAL, SQ_B1);
   put_piece(B_GOAL, SQ_G1);
 
+  for (int i = 0; i < 4; ++i) 
+    ss >> token;  //MOV?
   int in_cnt = 0;
   while (ss >> token) {
     if (isdigit(token)) {
@@ -230,7 +235,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       ++in_cnt;
     }
     else if ((idx = PieceToChar.find(token)) != string::npos) {
-      put_piece(Piece(idx), sq);
+      if(is_ok_B(sq))
+        put_piece(Piece(idx), sq);
       sq = SQUARE_ZERO;
       in_cnt = 0;
     }
@@ -251,16 +257,16 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   }*/
 
   // 2. Active color
-  ss >> token;
-  sideToMove = (token == 'w' ? WHITE : BLACK);
-  ss >> token;
+  //ss >> token;
+  //sideToMove = (token == 'w' ? WHITE : BLACK);
+  //ss >> token;
 
   // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,
   // Shredder-FEN that uses the letters of the columns on which the rooks began
   // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
   // if an inner rook is associated with the castling right, the castling tag is
   // replaced by the file letter of the involved rook, as for the Shredder-FEN.
-  /* castlingの話っぽい
+  /* 
   while ((ss >> token) && !isspace(token))
   {
       Square rsq;
@@ -310,7 +316,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   */
 
   // 5-6. Halfmove clock and fullmove number
-  ss >> std::skipws >> st->rule50 >> gamePly;
+  //ss >> std::skipws >> st->rule50 >> gamePly;
 
   // Convert from fullmove starting from 1 to gamePly starting from 0,
   // handle also common incorrect FEN with fullmove = 0.
@@ -355,6 +361,8 @@ void Position::set_check_info(StateInfo* si) const {
 
   //si->blockersForKing[WHITE] = slider_blockers(pieces(BLACK), square<KING>(WHITE), si->pinners[BLACK]);
   //si->blockersForKing[BLACK] = slider_blockers(pieces(WHITE), square<KING>(BLACK), si->pinners[WHITE]);
+  si->blockersForKing[WHITE] = 0;
+  si->blockersForKing[BLACK] = 0;
 
   //Square ksq = square<KING>(~sideToMove);
   //si->checkSquares[PAWN]   = pawn_attacks_bb(~sideToMove, ksq);
@@ -362,9 +370,16 @@ void Position::set_check_info(StateInfo* si) const {
   //si->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
   //si->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
   //si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  const Square* ksq = squares<GOAL>(~sideToMove);
-  si->checkSquares[BLUE]     = attacks_bb<BLUE>(ksq[0]) | attacks_bb<BLUE>(ksq[1]);
-  si->checkSquares[RED]      = attacks_bb<RED>(ksq[0]) | attacks_bb<RED>(ksq[1]);
+  const Square* ksqs = squares<GOAL>(~sideToMove);
+  si->checkSquares[BLUE] = 0;
+  si->checkSquares[RED] = 0;
+  si->checkSquares[PURPLE] = 0;
+  si->checkSquares[GOAL] = 0;
+  for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
+    si->checkSquares[BLUE] |= attacks_bb<BLUE>(ksq);
+    si->checkSquares[RED] |= attacks_bb<RED>(ksq);
+    si->checkSquares[PURPLE] |= attacks_bb<PURPLE>(ksq);
+  }
 }
 
 
@@ -379,11 +394,12 @@ void Position::set_state(StateInfo* si) const {
   //si->pawnKey = Zobrist::noPawns;
   si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   //si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
-  si->checkersBB = 0;
   const Square* ksqs = squares<GOAL>(sideToMove);
+  si->checkersBB = 0;
   for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
-    si->checkersBB |= attackers_to(ksq) & pieces(~sideToMove) & pieces(BLUE);
+    si->checkersBB |= attackers_to(ksq);
   }
+  si->checkersBB &= pieces(~sideToMove);
 
   set_check_info(si);
 
@@ -445,25 +461,41 @@ const string Position::fen() const {
   int emptyCnt;
   std::ostringstream ss;
 
-  for (Rank r = RANK_8; r >= RANK_1; --r)
-  {
-      for (File f = FILE_A; f <= FILE_H; ++f)
-      {
-          for (emptyCnt = 0; f <= FILE_H && empty(make_square(f, r)); ++f)
-              ++emptyCnt;
+  //for (Rank r = RANK_8; r >= RANK_1; --r)
+  //{
+  //    for (File f = FILE_A; f <= FILE_H; ++f)
+  //    {
+  //        for (emptyCnt = 0; f <= FILE_H && empty(make_square(f, r)); ++f)
+  //            ++emptyCnt;
 
-          if (emptyCnt)
-              ss << emptyCnt;
+  //        if (emptyCnt)
+  //            ss << emptyCnt;
 
-          if (f <= FILE_H)
-              ss << PieceToChar[piece_on(make_square(f, r))];
-      }
+  //        if (f <= FILE_H)
+  //            ss << PieceToChar[piece_on(make_square(f, r))];
+  //    }
 
-      if (r > RANK_1)
-          ss << '/';
+  //    if (r > RANK_1)
+  //        ss << '/';
+  //}
+  ss << 'M' << 'O' << 'V' << '?';
+  for (Rank r = RANK_8; r >= RANK_1; --r) {
+    for (File f = FILE_A; f <= FILE_H; ++f) {
+      Square sq = make_square(f, r);
+      if (!is_ok_B(sq)) continue;
+      Piece pc = piece_on(sq);
+      if (pc == NO_PIECE || pc == GOAL) continue;
+      ss << f-1 << r-1;
+      if (pc == W_RED)
+        ss << 'R';
+      else if (pc == W_BLUE)
+        ss << 'B';
+      else if (pc == B_PURPLE)
+        ss << 'u';
+    }
   }
 
-  ss << (sideToMove == WHITE ? " w " : " b ");
+  //ss << (sideToMove == WHITE ? " w " : " b ");
 
   //if (can_castle(WHITE_OO))
   //    ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OO ))) : 'K');
@@ -478,11 +510,11 @@ const string Position::fen() const {
   //    ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OOO))) : 'q');
 
   //if (!can_castle(ANY_CASTLING))
-      ss << '-';
+      //ss << '-';
 
   //ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
-  ss << "-"
-     << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
+  //ss << "-"
+  //   << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
   return ss.str();
 }
@@ -536,7 +568,8 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
         | (attacks_bb<KING>(s)             & pieces(KING));*/
   return  (attacks_bb<BLUE>(s)    & pieces(BLUE))
         | (attacks_bb<RED>(s)     & pieces(RED))
-        | (attacks_bb<PURPLE>(s)  & pieces(PURPLE));
+        | (attacks_bb<PURPLE>(s)  & pieces(PURPLE))
+        | (attacks_bb<GOAL>(s) & pieces(GOAL));
 }
 
 
@@ -553,6 +586,10 @@ bool Position::legal(Move m) const {
 
   assert(color_of(moved_piece(m)) == us);
   //assert(piece_on(square<KING>(us)) == make_piece(us, KING));
+  const Square* ksqs = squares<GOAL>(us);
+  for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
+    assert(piece_on(ksq) == make_piece(us, GOAL));
+  }
 
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after
@@ -595,7 +632,8 @@ bool Position::legal(Move m) const {
   // If the moving piece is a king, check whether the destination square is
   // attacked by the opponent.
   //if (type_of(piece_on(from)) == KING)
-  //    return !(attackers_to(to) & pieces(~us));
+  if(type_of(piece_on(from)) == GOAL)
+      return !(attackers_to(to) & pieces(~us));
 
 
   //たぶんここ↓で枝刈りしてる
@@ -664,10 +702,11 @@ bool Position::pseudo_legal(const Move m) const {
   {
       
       //if (type_of(pc) != KING)
+      if(type_of(pc) != GOAL)
       {
           // Double check? In this case a king move is required
-          //if (more_than_one(checkers()))
-          //    return false;
+          if (more_than_one(checkers()))
+              return false;
 
           // Our move must be a blocking evasion or a capture of the checking piece
           //if (!((between_bb(lsb(checkers()), square<GOAL>(us)) | checkers()) & to))
@@ -676,8 +715,8 @@ bool Position::pseudo_legal(const Move m) const {
       }
       // In case of king moves under check we have to remove king so as to catch
       // invalid moves like b1a1 when opposite queen is on c1.
-      //else if (attackers_to(to, pieces() ^ from) & pieces(~us))
-      //    return false;
+      else if (attackers_to(to, pieces() ^ from) & pieces(~us))
+          return false;
   }
 
   return true;
@@ -699,10 +738,10 @@ bool Position::gives_check(Move m) const {
       return true;
 
   // Is there a discovered check?
-  if (   (blockers_for_king(~sideToMove) & from)
-      //&& !aligned(from, to, square<KING>(~sideToMove)))
-      )
-      return true;
+  //if (   (blockers_for_king(~sideToMove) & from)
+  //    //&& !aligned(from, to, square<KING>(~sideToMove)))
+  //    )
+  //    return true;
 
   switch (type_of(m))
   {
@@ -778,13 +817,15 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_on(from);
+  assert(pc != NO_PIECE);
   //Piece captured = type_of(m) == ENPASSANT ? make_piece(them, PAWN) : piece_on(to);
   Piece captured = piece_on(to);
 
   assert(color_of(pc) == us);
   //assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
+  assert(captured == NO_PIECE || color_of(captured) == them);
   //assert(type_of(captured) != KING);
-  assert(type_of(captured) != GOAL);
+  //assert(type_of(captured) != GOAL);
 
 
   //if (type_of(m) == CASTLING)
@@ -867,7 +908,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   //}
 
   // Move the piece. The tricky Chess960 castling is handled earlier
-  // 多分要らない?
   //if (type_of(m) != CASTLING)
   //{
   //    if (Eval::useNNUE)
@@ -877,7 +917,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   //        dp.to[0] = to;
   //    }
 
-  //    move_piece(from, to);
+      move_piece(from, to);
   //}
 
   // If the moving piece is a pawn do some special extra work
@@ -937,11 +977,13 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   st->key = k;
 
   // Calculate checkers bitboard (if move gives check)
-  st->checkersBB = 0;
+  //st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
   const Square* ksqs = squares<GOAL>(them);
+  st->checkersBB = 0;
   for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
-    st->checkersBB |= givesCheck ? attackers_to(ksq) & pieces(us) & pieces(BLUE) : 0;
+    st->checkersBB |= givesCheck ? attackers_to(ksq) : 0;
   }
+  st->checkersBB &= pieces(us) & (pieces(us, BLUE) | pieces(us, PURPLE));
 
   sideToMove = ~sideToMove;
 
@@ -967,7 +1009,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       }
   }
 
-  assert(pos_is_ok());
+  //assert(pos_is_ok());
 }
 
 
@@ -987,7 +1029,7 @@ void Position::undo_move(Move m) {
 
   //assert(empty(from) || type_of(m) == CASTLING);
   //assert(type_of(st->capturedPiece) != KING);
-  assert(type_of(st->capturedPiece) != GOAL);
+  //assert(type_of(st->capturedPiece) != GOAL);
 
   
   //if (type_of(m) == PROMOTION)
@@ -1033,7 +1075,7 @@ void Position::undo_move(Move m) {
   st = st->previous;
   --gamePly;
 
-  assert(pos_is_ok());
+  //assert(pos_is_ok());
 }
 
 
@@ -1107,7 +1149,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
   st->repetition = 0;
 
-  assert(pos_is_ok());
+  //assert(pos_is_ok());
 }
 
 void Position::undo_null_move() {
@@ -1232,11 +1274,11 @@ bool Position::see_ge(Move m, Value threshold) const {
           attackers |=  (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN))
                       | (attacks_bb<ROOK  >(to, occupied) & pieces(ROOK  , QUEEN));
       }
+      */
       
-      else // KING
+      //else // KING
            // If we "capture" with the king but opponent still has attackers,
            // reverse the result.
-           */
           return (attackers & ~pieces(stm)) ? res ^ 1 : res;
   }
 
@@ -1357,7 +1399,7 @@ void Position::flip() {
 
   set(f, is_chess960(), st, this_thread());
 
-  assert(pos_is_ok());
+  //assert(pos_is_ok());
 }
 
 
@@ -1369,16 +1411,29 @@ bool Position::pos_is_ok() const {
 
   constexpr bool Fast = true; // Quick (default) or full check?
 
-  if (   (sideToMove != WHITE && sideToMove != BLACK)
-      //|| piece_on(square<KING>(WHITE)) != W_KING
-      //|| piece_on(square<KING>(BLACK)) != B_KING
-      || piece_on(squares<GOAL>(WHITE)[0]) != W_GOAL
-      || piece_on(squares<GOAL>(WHITE)[1]) != W_GOAL
-      || piece_on(squares<GOAL>(BLACK)[0]) != B_GOAL
-      || piece_on(squares<GOAL>(BLACK)[1]) != B_GOAL
-      /*|| (   ep_square() != SQ_NONE
-          && relative_rank(sideToMove, ep_square()) != RANK_6)*/)
-      assert(0 && "pos_is_ok: Default");
+  if ((sideToMove != WHITE && sideToMove != BLACK)
+    //|| piece_on(square<KING>(WHITE)) != W_KING
+    //|| piece_on(square<KING>(BLACK)) != B_KING
+    || piece_on(squares<GOAL>(WHITE)[0]) != W_GOAL
+    || piece_on(squares<GOAL>(WHITE)[1]) != W_GOAL
+    || piece_on(squares<GOAL>(BLACK)[0]) != B_GOAL
+    || piece_on(squares<GOAL>(BLACK)[1]) != B_GOAL
+    /*|| (   ep_square() != SQ_NONE
+        && relative_rank(sideToMove, ep_square()) != RANK_6)*/)
+  {
+    char cr[8] = {' ','B','R','P','G','?','?','?'};
+    for (Rank r = RANK_1; r <= RANK_8; ++r) {
+      for (File f = FILE_A; f <= FILE_H; ++f) {
+        std::cout << cr[type_of(piece_on(make_square(f, r)))];
+      }
+      std::cout << std::endl;
+    }
+    std::cout << piece_on(squares<GOAL>(WHITE)[0]) << " " << W_GOAL << std::endl;
+    std::cout << piece_on(squares<GOAL>(WHITE)[1]) << " " << W_GOAL << std::endl;
+    std::cout << piece_on(squares<GOAL>(BLACK)[0]) << " " << B_GOAL << std::endl;
+    std::cout << piece_on(squares<GOAL>(BLACK)[1]) << " " << B_GOAL << std::endl;
+    assert(0 && "pos_is_ok: Default");
+  }
 
   if (Fast)
       return true;
@@ -1391,6 +1446,7 @@ bool Position::pos_is_ok() const {
       || attackers_to(squares<GOAL>(~sideToMove)[0]) & pieces(sideToMove)
       || attackers_to(squares<GOAL>(~sideToMove)[1]) & pieces(sideToMove))
       assert(0 && "pos_is_ok: Kings");
+
 
   //if (   (pieces(PAWN) & (Rank1BB | Rank8BB))
   //    || pieceCount[W_PAWN] > 8
@@ -1407,6 +1463,10 @@ bool Position::pos_is_ok() const {
   //    for (PieceType p2 = PAWN; p2 <= KING; ++p2)
   //        if (p1 != p2 && (pieces(p1) & pieces(p2)))
   //            assert(0 && "pos_is_ok: Bitboards");
+  for (PieceType p1 = BLUE; p1 <= GOAL; ++p1)
+    for (PieceType p2 = BLUE; p2 <= GOAL; ++p2)
+      if (p1 != p2 && (pieces(p1) & pieces(p2)))
+        assert(0 && "pos_is_ok: Bitboards");
 
   StateInfo si = *st;
   set_state(&si);
@@ -1438,4 +1498,39 @@ bool Position::pos_is_ok() const {
   //    }
 
   return true;
+}
+
+
+//ボードの受信
+void Position::recvBoard(string msg, Thread* th) {
+  for (Square sq = SQ_B2; sq <= SQ_G7; ++sq) {
+    if (!is_ok_B(sq)) continue;
+    Position::remove_piece(sq);
+  }
+  put_piece(W_GOAL, SQ_B8);
+  put_piece(W_GOAL, SQ_G8);
+  put_piece(B_GOAL, SQ_B1);
+  put_piece(B_GOAL, SQ_G1);
+
+  const int baius = 4;
+
+  for (int i = 0; i < 16; i++) {
+    int x = msg[baius + 3 * i] - '0' + 1;
+    int y = msg[baius + 3 * i + 1] - '0' + 1;
+    char type = msg[baius + 3 * i + 2];
+
+    if (1 <= x && x <= 6 && 1 <= y && y <= 6) {
+      if (type == 'R') {
+        put_piece(W_RED, make_square((File)x, (Rank)y));
+      }
+      else if (type == 'B') {
+        put_piece(W_BLUE, make_square((File)x, (Rank)y));
+      }
+      else if (type == 'u') {
+        put_piece(B_PURPLE, make_square((File)x, (Rank)y));
+      }
+    }
+  }
+
+  thisThread = th;
 }

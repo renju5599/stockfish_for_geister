@@ -104,7 +104,10 @@ struct Magic {
 //extern Magic BishopMagics[SQUARE_NB];
 
 inline Bitboard square_bb(Square s) {
-  assert(is_ok(s));
+  if (!is_ok(s)) {
+    return 0;
+    assert(is_ok(s));
+  }
   return SquareBB[s];
 }
 
@@ -178,7 +181,7 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
 
 inline Bitboard pawn_attacks_bb(Color c, Square s) {
 
-  assert(is_ok(s));
+  assert(is_ok_B(s));
   return PawnAttacks[c][s];
 }
 
@@ -289,7 +292,7 @@ template<PieceType Pt>
 inline Bitboard attacks_bb(Square s) {
 
   //assert((Pt != PAWN) && (is_ok(s)));
-  assert((is_ok(s)));
+  assert((is_ok_B(s)));
 
   return PseudoAttacks[Pt][s];
 }
@@ -303,7 +306,7 @@ template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
   //assert((Pt != PAWN) && (is_ok(s)));
-  assert((is_ok(s)));
+  assert((is_ok_B(s)));
 
   /*switch (Pt)
   {
@@ -318,7 +321,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
   //assert((pt != PAWN) && (is_ok(s)));
-  assert((is_ok(s)));
+  assert((is_ok_B(s)));
 
   /*switch (pt)
   {

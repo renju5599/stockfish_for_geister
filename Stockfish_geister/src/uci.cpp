@@ -16,8 +16,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef false
-//#endif  //デバッグ時の応急処置
 
 #include <cassert>
 #include <cmath>
@@ -34,6 +32,14 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+
+#define NOMINMAX
+#pragma comment(lib, "ws2_32.lib")
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#include "types.h"
+#include "Game_geister.h"
 
 using namespace std;
 
@@ -374,60 +380,15 @@ Move UCI::to_move(const Position& pos, string& str) {
 
   return MOVE_NONE;
 }
-#endif
 
-#pragma once
-#pragma comment(lib, "wsock32.lib")
-#include <stdio.h>
-#include <string.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iostream>
-#include <string>
 
-#include "uci.h"
-#include "Game_geister.h"
 
-namespace tcp {
-  void mySend(int dstSocket, std::string str = "")
-  {
-    if (str.length() == 0) {	//null文字なら「入力」を受け付ける
-      std::cin >> str;
-    }
-    if (str.length() < 2 || str[str.length() - 2] != '\r' || str[str.length() - 1] != '\n') {	//\r\nが末尾になければ追加
-      str += '\r';
-      str += '\n';
-    }
-    int byte = send(dstSocket, str.c_str(), str.length(), 0);	//文字列を送信
-    if (byte <= 0) {
-      std::cout << "送信エラー" << std::endl;
-    }
-  }
-
-  std::string myRecv(int dstSocket)
-  {
-    char buffer[10];
-    std::string msg;
-
-    do {
-      int byte = recv(dstSocket, buffer, 1, 0);	//文字を受信
-
-      if (byte == 0) break;
-      if (byte < 0) { std::cout << "受信に失敗しました" << std::endl; return msg; }
-
-      msg += buffer[0];
-    } while (msg.length() < 2 || msg[msg.length() - 2] != '\r' || msg[msg.length() - 1] != '\n');
-
-    std::cout << "受信 = " << msg << std::endl;
-
-    return msg;
-  }
-
-  bool openPort(int& dstSocket, int port = -1, std::string dest = "")
+namespace {
+  bool openPort(int& dstSocket, int port = -1, string dest = "")
   {
     // IP アドレス，ポート番号，ソケット，sockaddr_in 構造体
     char destination[32];
-    struct sockaddr_in dstAddr;
+    sockaddr_in dstAddr;
     int PORT;
 
     // Windows の場合
@@ -456,7 +417,8 @@ namespace tcp {
     memset(&dstAddr, 0, sizeof(dstAddr));
     dstAddr.sin_port = htons(PORT);
     dstAddr.sin_family = AF_INET;
-    dstAddr.sin_addr.s_addr = inet_addr(destination);
+    //dstAddr.sin_addr.s_addr = inet_addr(destination);
+    assert(inet_pton(dstAddr.sin_family, destination, &dstAddr.sin_addr.S_un.S_addr) == 1);
 
     // ソケットの生成
     dstSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -478,8 +440,7 @@ namespace tcp {
     WSACleanup();
   }
 
-
-  std::string setInitRedName(int allNum = 0, int redNum = 0, std::string initRedName = "") {
+  string setInitRedName(int allNum = 0, int redNum = 0, string initRedName = "") {
     if (allNum == 8) return initRedName;
     int ransu = rand() % (8 - allNum);
     if (ransu < 4 - redNum) {
@@ -492,45 +453,235 @@ namespace tcp {
   }
 
 
-  //UCI::loop の代わりになるように動かそうと思っている
-  //進捗状況：ぴえん
-  int playGame(int port = -1, std::string destination = "") {
-    int dstSocket;
+  void go(Position& pos, StateListPtr& states) {
 
-    if (!openPort(dstSocket, port, destination)) return 0;
-    std::string initRedName = tcp::setInitRedName();
-    tcp::myRecv(dstSocket);							//SET ?の受信
-    tcp::mySend(dstSocket, "SET:" + initRedName);	//SET:EFGHのように入力 (して, [\r][\n][\0]を末尾につけて送信)
-    tcp::myRecv(dstSocket);							//OK, NGの受信
+    Search::LimitsType limits;
+    string token;
+    bool ponderMode = false;
 
-    int turnCnt = 0;
-    int res;
-    std::string recv_msg;
+    limits.startTime = now(); // As early as possible!
 
-    while (1) {
-      recv_msg = tcp::myRecv(dstSocket);	//盤面の受信
-      res = Game_::isEnd(recv_msg);
-      if (res) break;					//終了判定
+    //while (is >> token)
+      //if (token == "searchmoves") // Needs to be the last command on the line
+        //while (is >> token)
+          //limits.searchmoves.push_back(UCI::to_move(pos, token));
 
-      //position.cppに recvBoardを移植して、Threadとかをいじれるようにする？
-      Game_::recvBoard(recv_msg);			//駒を配置
-      //pos.set(recv_msg, false, &states->back(), Threads.main());
+      //else if (token == "wtime")     is >> limits.time[WHITE];
+      //else if (token == "btime")     is >> limits.time[BLACK];
+      //else if (token == "winc")      is >> limits.inc[WHITE];
+      //else if (token == "binc")      is >> limits.inc[BLACK];
+      //else if (token == "movestogo") is >> limits.movestogo;
+      //movestogoがわからないので保留
+      //limits.movestogo = 50;
 
-      //どうしましょう（uci::loopを見て考えましょう）
-      std::string mv = solve(turnCnt);		//思考
+      //else if (token == "depth")     is >> limits.depth;
+      //limits.depth = 5;
+      //else if (token == "nodes")     is >> limits.nodes;
+      //limits.nodes = 250000;
+      //ここは適当
 
-      tcp::mySend(dstSocket, mv);			//行動の送信
-      tcp::myRecv(dstSocket);				//ACKの受信
-      turnCnt += 2;
-    }
+      //else if (token == "movetime")  is >> limits.movetime;
+      limits.movetime = 3000;
+      //else if (token == "mate")      is >> limits.mate;
+      //limits.mate = 1;  //mateがよくわからん
 
-    //終了の原因(Game.h)
-    //string s = Game_::getEndInfo(recv_msg);
-    //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
-    //endInfo[s]++;
+      //else if (token == "perft")     is >> limits.perft;
+      //perftがわからない
 
-    tcp::closePort(dstSocket);
-    //red::saveGame();
-    return res;
+      //else if (token == "infinite")  limits.infinite = 1;
+    limits.infinite = 1;
+      //else if (token == "ponder")    ponderMode = true;
+      //ponderをtrueにするべきなのかわからない
+
+    Threads.start_thinking(pos, states, limits, ponderMode);
   }
+
+
+}//namespace
+
+namespace Game_ {
+  char board[6][6];			//board[y][x] = {R:自分の赤, B:自分の青, u:相手の駒, '.':空マス, 自分はy=5の側にいる
+  char komaName[6][6];		//komaName[y][x] = {受信時に, (y, x)にある駒の名前}
+  int rNum, uNum;				//盤面にある敵の赤コマの個数, 敵のコマの個数
+}
+
+//sの先頭がt ⇔ true
+bool Game_::startWith(string& s, string t) {
+  for (int i = 0; i < t.length(); i++) {
+    if (i >= s.length() || s[i] != t[i]) return false;
+  }
+  return true;
+}
+
+//ゲームの終了判定. dispFlag = trueにすると, 結果を表示できる。
+int Game_::isEnd(string s, bool dispFlag = true) {
+  if (startWith(s, "WON")) {
+    if (dispFlag) cout << "won" << endl;
+    return WON;
+  }
+  if (startWith(s, "LST")) {
+    if (dispFlag) cout << "lost" << endl;
+    return LST;
+  }
+  if (startWith(s, "DRW")) {
+    if (dispFlag) cout << "draw" << endl;
+    return DRW;
+  }
+  return 0;
+}
+
+//ボードの受信
+void Game_::recvBoard(string msg) {
+  int i, j;
+
+  for (i = 0; i < 6; i++) {
+    for (j = 0; j < 6; j++) {
+      board[i][j] = '.';
+      komaName[i][j] = '.';
+    }
+  }
+
+  const int baius = 4;
+  rNum = 4;	//敵の赤い駒の個数
+  uNum = 0;
+
+  for (i = 0; i < 16; i++) {
+    int x = msg[baius + 3 * i] - '0';
+    int y = msg[baius + 3 * i + 1] - '0';
+    char type = msg[baius + 3 * i + 2];
+
+    if (0 <= x && x < 6 && 0 <= y && y < 6) {
+      if (type == 'R' || type == 'B' || type == 'u') {
+        board[y][x] = type;
+      }
+      if (i < 8) {
+        komaName[y][x] = (char)(i + 'A');
+      }
+      else {
+        komaName[y][x] = (char)(i - 8 + 'a');
+      }
+    }
+    else {
+      if (type == 'r' && i >= 8) rNum--;
+    }
+    if (type == 'u') uNum++;
+  }
+}
+
+
+namespace tcp {
+  Move mv;
+  int dstSocket;
+}//namespace tcp
+
+void tcp::mySend(int dstSocket, string str = "")
+{
+  if (str.length() == 0) {	//null文字なら「入力」を受け付ける
+    cin >> str;
+  }
+  if (str.length() < 2 || str[str.length() - 2] != '\r' || str[str.length() - 1] != '\n') {	//\r\nが末尾になければ追加
+    str += '\r';
+    str += '\n';
+  }
+  int byte = send(dstSocket, str.c_str(), str.length(), 0);	//文字列を送信
+  sync_cout << str << sync_endl;
+  if (byte <= 0) {
+    cout << "送信エラー" << endl;
+  }
+}
+
+string tcp::myRecv(int dstSocket)
+{
+  char buffer[10];
+  string msg;
+
+  do {
+    int byte = recv(dstSocket, buffer, 1, 0);	//文字を受信
+
+    if (byte == 0) break;
+    if (byte < 0) { cout << "受信に失敗しました" << endl; return msg; }
+
+    msg += buffer[0];
+  } while (msg.length() < 2 || msg[msg.length() - 2] != '\r' || msg[msg.length() - 1] != '\n');
+
+  cout << "受信 = " << msg << endl;
+
+  return msg;
+}
+
+string tcp::MoveStr(Move mv) {
+  string ret;
+  Square from = from_sq(mv);
+  Square to = to_sq(mv);
+  int x = file_of(from) - 1;
+  int y = rank_of(from) - 1;
+
+  ret += "MOV:";
+  ret += Game_::komaName[y][x];
+  ret += ",";
+  if (from + NORTH == to) ret += 'S';
+  else if (from + EAST == to) ret += 'E';
+  else if (from + WEST == to) ret += 'W';
+  else if (from + SOUTH == to) ret += 'N';
+  else {
+    std::cout << file_of(from) << ',' << rank_of(from) << ' ';
+    std::cout << file_of(to) << ',' << rank_of(to) << endl;
+    //assert(false);
+  }
+  return ret;
+}
+
+
+//UCI::loop の代わりになるように動かそうと思っている
+//進捗状況：Stackoverflowが起きる
+int tcp::playGame(int port = -1, string destination = "") {
+
+  if (!openPort(dstSocket, port, destination)) return 0;
+  string initRedName = setInitRedName();
+  tcp::myRecv(dstSocket);							//SET ?の受信
+  tcp::mySend(dstSocket, "SET:" + initRedName);	//SET:EFGHのように入力 (して, [\r][\n][\0]を末尾につけて送信)
+  tcp::myRecv(dstSocket);							//OK, NGの受信
+
+  Search::clear();
+
+  int turnCnt = 0;
+  int res;
+  string recv_msg;
+
+  Position pos;
+  StateListPtr states(new deque<StateInfo>(1));
+
+  pos.set(StartFEN, false, &states->back(), Threads.main());
+
+  while (1) {
+    //Threads.stop = true;
+
+    recv_msg = tcp::myRecv(dstSocket);	//盤面の受信
+    res = Game_::isEnd(recv_msg);
+    if (res) break;					//終了判定
+
+    //position.cppに recvBoardを移植して、Threadとかをいじれるようにする？
+    Game_::recvBoard(recv_msg);			//駒を配置
+    pos.recvBoard(recv_msg, Threads.main());
+    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+    pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
+
+    //多分大丈夫そう
+    //string mv = solve(turnCnt);		//思考
+    go(pos, states);
+
+    tcp::myRecv(tcp::dstSocket);				//ACKの受信
+
+    turnCnt += 2;
+  }
+
+  //終了の原因(Game.h)
+  //string s = Game_::getEndInfo(recv_msg);
+  //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
+  //endInfo[s]++;
+
+  closePort(dstSocket);
+  //red::saveGame();
+  return res;
+
 }

@@ -212,6 +212,8 @@ void Search::clear() {
 /// MainThread::search() is started when the program receives the UCI 'go'
 /// command. It searches from the root position and outputs the "bestmove".
 
+//sync_coutをコメント化しました（出力が怖いので）//やっぱり部分的にコメント解除した
+//最後にmvの値を変更するようにしました
 void MainThread::search() {
 
   if (Limits.perft)
@@ -272,15 +274,20 @@ void MainThread::search() {
   bestPreviousScore = bestThread->rootMoves[0].score;
 
   // Send again PV info if we have a new best thread
+  //if (bestThread != this)
+  //    sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
   if (bestThread != this)
-      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
+    UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE);
 
-  sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+  //sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
-  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos))
-      std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+  if (bestThread->rootMoves[0].pv.size() > 1 || bestThread->rootMoves[0].extract_ponder_from_tt(rootPos));
+  //    std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
-  std::cout << sync_endl;
+  //std::cout << sync_endl;
+
+  tcp::mv = bestThread->rootMoves[0].pv[0];
+  tcp::mySend(tcp::dstSocket, tcp::MoveStr(tcp::mv));			//行動の送信
 }
 
 
@@ -349,8 +356,8 @@ void Thread::search() {
   multiPV = std::min(multiPV, rootMoves.size());
   ttHitAverage = TtHitAverageWindow * TtHitAverageResolution / 2;
 
-  /*
-  int ct = int(Options["Contempt"]) * PawnValueEg / 100; // From centipawns
+  
+  int ct = int(Options["Contempt"]) * RePawnValueEg / 100; // From centipawns
 
   // In analysis mode, adjust contempt in accordance with user preference
   if (Limits.infinite || Options["UCI_AnalyseMode"])
@@ -363,8 +370,6 @@ void Thread::search() {
   // Evaluation score is from the white point of view
   contempt = (us == WHITE ?  make_score(ct, ct / 2)
                           : -make_score(ct, ct / 2));
-
-  */
 
   int searchAgainCounter = 0;
 
@@ -411,10 +416,10 @@ void Thread::search() {
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
               // Adjust contempt based on root move's previousScore (dynamic contempt)
-              //int dct = ct + (105 - ct / 2) * prev / (abs(prev) + 149);
+              int dct = ct + (105 - ct / 2) * prev / (abs(prev) + 149);
 
-              //contempt = (us == WHITE ?  make_score(dct, dct / 2)
-              //                        : -make_score(dct, dct / 2));
+              contempt = (us == WHITE ?  make_score(dct, dct / 2)
+                                      : -make_score(dct, dct / 2));
           }
 
           // Start with a small aspiration window and, in the case of a fail
@@ -442,11 +447,12 @@ void Thread::search() {
 
               // When failing high/low give some update (without cluttering
               // the UI) before a re-search.
-              if (   mainThread
-                  && multiPV == 1
-                  && (bestValue <= alpha || bestValue >= beta)
-                  && Time.elapsed() > 3000)
-                  sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+              if (mainThread
+                && multiPV == 1
+                && (bestValue <= alpha || bestValue >= beta)
+                && Time.elapsed() > 3000)
+                //sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+                UCI::pv(rootPos, rootDepth, alpha, beta);
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -475,9 +481,10 @@ void Thread::search() {
           // Sort the PV lines searched so far and update the GUI
           std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
-          if (    mainThread
-              && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
-              sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+          if (mainThread
+            && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
+            //sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
+            UCI::pv(rootPos, rootDepth, alpha, beta);
       }
 
       if (!Threads.stop)
@@ -562,7 +569,7 @@ void Thread::search() {
 namespace {
 
   // search<>() is the main search function for both PV and non-PV nodes
-
+  
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
 
@@ -628,7 +635,6 @@ namespace {
             || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos)
                                                         : value_draw(pos.this_thread());
-            //return VALUE_NONE;
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -783,7 +789,6 @@ namespace {
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
             ss->staticEval = eval = evaluate_P(pos);
-            //ss->staticEval = eval = VALUE_NONE;
 
         if (eval == VALUE_DRAW)
             eval = value_draw(thisThread);
@@ -797,7 +802,6 @@ namespace {
     {
         if ((ss-1)->currentMove != MOVE_NULL)
             ss->staticEval = eval = evaluate_P(pos);
-            //ss->staticEval = eval = VALUE_NONE;
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
@@ -999,9 +1003,9 @@ moves_loop: // When in check, search starts from here
       ss->moveCount = ++moveCount;
 
       if (rootNode && thisThread == Threads.main() && Time.elapsed() > 3000)
-          sync_cout << "info depth " << depth
-                    << " currmove " << UCI::move(move, pos.is_chess960())
-                    << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
+        sync_cout << "info depth " << depth
+        << " currmove " << UCI::move(move, pos.is_chess960())
+        << " currmovenumber " << moveCount + thisThread->pvIdx << sync_endl;
       if (PvNode)
           (ss+1)->pv = nullptr;
 
@@ -1116,16 +1120,19 @@ moves_loop: // When in check, search starts from here
           extension = 1;
 
       // Last captures extension
-      //pawnもrookもないので消してみる
-      //else if (   PieceValue[EG][pos.captured_piece()] > PawnValueEg
-      //         && pos.non_pawn_material() <= 2 * RookValueMg)
-      //    extension = 1;
+      else if (   PieceValue[EG][pos.captured_piece()] > RePawnValueEg
+               && pos.non_pawn_material() <= 2 * ReRookValueMg)
+          extension = 1;
 
       // Late irreversible move extension
-      if (   move == ttMove
-          && pos.rule50_count() > 80
-          /*&& (captureOrPromotion || type_of(movedPiece) == PAWN)*/)
-          extension = 2;
+      //if (   move == ttMove
+      //    && pos.rule50_count() > 80
+      //    && (captureOrPromotion || type_of(movedPiece) == PAWN))
+      //    extension = 2;
+      if (move == ttMove
+        && pos.rule50_count() > 80
+        && captureOrPromotion)
+        extension = 2;
 
       // Add extension to new depth
       newDepth += extension;
@@ -1427,12 +1434,11 @@ moves_loop: // When in check, search starts from here
     bestMove = MOVE_NONE;
     ss->inCheck = pos.checkers();
     moveCount = 0;
-    
+
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
         return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos) : VALUE_DRAW;
-        //return (ss->ply >= MAX_PLY && !ss->inCheck) ? VALUE_NONE : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1469,7 +1475,6 @@ moves_loop: // When in check, search starts from here
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
                 ss->staticEval = bestValue = evaluate_P(pos);
-                //ss->staticEval = bestValue = VALUE_NONE;
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1479,7 +1484,6 @@ moves_loop: // When in check, search starts from here
         else
             ss->staticEval = bestValue =
             (ss-1)->currentMove != MOVE_NULL ? evaluate_P(pos)
-            //(ss - 1)->currentMove != MOVE_NULL ? VALUE_NONE
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta
@@ -1687,10 +1691,8 @@ moves_loop: // When in check, search starts from here
     PieceType captured = type_of(pos.piece_on(to_sq(bestMove)));
 
     bonus1 = stat_bonus(depth + 1);
-    //bonus2 = bestValue > beta + PawnValueMg ? bonus1               // larger bonus
-    //                                        : stat_bonus(depth);   // smaller bonus
-    bonus2 = bestValue > beta ? bonus1               // larger bonus
-                              : stat_bonus(depth);   // smaller bonus
+    bonus2 = bestValue > beta + RePawnValueMg ? bonus1               // larger bonus
+                                            : stat_bonus(depth);   // smaller bonus
 
     if (!pos.capture_or_promotion(bestMove))
     {
@@ -1775,8 +1777,7 @@ moves_loop: // When in check, search starts from here
 
     // RootMoves are already sorted by score in descending order
     Value topScore = rootMoves[0].score;
-    //int delta = std::min(topScore - rootMoves[multiPV - 1].score, PawnValueMg);
-    int delta = topScore - rootMoves[multiPV - 1].score;
+    int delta = std::min(topScore - rootMoves[multiPV - 1].score, RePawnValueMg);
     int weakness = 120 - 2 * level;
     int maxScore = -VALUE_INFINITE;
 

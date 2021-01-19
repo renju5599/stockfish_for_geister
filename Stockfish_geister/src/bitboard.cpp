@@ -48,7 +48,23 @@ Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
 inline Bitboard safe_destination(Square s, int step) {
     Square to = Square(s + step);
-    return is_ok_dist(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+}
+inline Bitboard safe_destination(Square s, int step, PieceType pt) {
+  Square to = Square(s + step);
+  switch (pt)
+  {
+  case BLUE:
+    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+  case RED:
+    return is_ok_R(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+  case PURPLE:
+    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+  case GOAL:
+    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+  default:
+    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+  }
 }
 
 
@@ -90,22 +106,24 @@ void Bitboards::init() {
   //init_magics(ROOK, RookTable, RookMagics);
   //init_magics(BISHOP, BishopTable, BishopMagics);
 
-  //これは何を??
   for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
   {
+    if (!is_ok_R(s1)) continue;
+
       //PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
       //PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
       //左上、上、右上みたいな感じの数列
       //要するに王将の動き
       for (int step : {-8, -1, 1, 8}) {
-        PseudoAttacks[BLUE][s1] |= safe_destination(s1, step);
-        PseudoAttacks[RED][s1] |= safe_destination(s1, step);
-        PseudoAttacks[PURPLE][s1] |= safe_destination(s1, step);
+        PseudoAttacks[BLUE][s1] |= safe_destination(s1, step, BLUE);
+        PseudoAttacks[RED][s1] |= safe_destination(s1, step, RED);
+        PseudoAttacks[PURPLE][s1] |= safe_destination(s1, step, PURPLE);
       }
 
       //for (int step : {-9, -8, -7, -1, 1, 7, 8, 9} )
       //   PseudoAttacks[KING][s1] |= safe_destination(s1, step);
+      PseudoAttacks[GOAL][s1] = 0;
 
       /*
       for (int step : {-17, -15, -10, -6, 6, 10, 15, 17} )

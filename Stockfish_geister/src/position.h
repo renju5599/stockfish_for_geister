@@ -87,6 +87,9 @@ public:
   Position& set(const std::string& fenStr, bool isChess960, StateInfo* si, Thread* th);
   Position& set(const std::string& code, Color c, StateInfo* si);
   const std::string fen() const;
+  Position& clear(StateInfo* si, Thread* th);
+  // ガイスターの方から(Game.h)
+  void recvBoard(std::string msg, Thread* th);
 
   // Position representation
   Bitboard pieces(PieceType pt) const;
@@ -184,8 +187,8 @@ private:
   void put_piece(Piece pc, Square s);
   void remove_piece(Square s);
   void move_piece(Square from, Square to);
-  template<bool Do>
-  void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
+  //template<bool Do>
+  //void do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto);
 
   // Data members
   Piece board[SQUARE_NB];
@@ -218,6 +221,9 @@ inline Color Position::side_to_move() const {
 }
 
 inline Piece Position::piece_on(Square s) const {
+  if (!is_ok(s)) {
+    return NO_PIECE;
+  }
   assert(is_ok(s));
   return board[s];
 }
@@ -400,7 +406,7 @@ inline bool Position::is_chess960() const {
 inline bool Position::capture_or_promotion(Move m) const {
   assert(is_ok(m));
   //return type_of(m) != NORMAL ? type_of(m) != CASTLING : !empty(to_sq(m));
-  return type_of(m) != NORMAL ? 1 : !empty(to_sq(m));
+  return type_of(m) != NORMAL ? true : !empty(to_sq(m));
 }
 
 
@@ -422,7 +428,10 @@ inline Thread* Position::this_thread() const {
 }
 
 inline void Position::put_piece(Piece pc, Square s) {
-
+  assert(pc != NO_PIECE);
+  if (!(s >= SQ_A1 && s <= SQ_H8)) {
+    return;
+  }
   board[s] = pc;
   byTypeBB[ALL_PIECES] |= byTypeBB[type_of(pc)] |= s;
   byColorBB[color_of(pc)] |= s;
@@ -439,6 +448,8 @@ inline void Position::remove_piece(Square s) {
   // the list and not in its original place, it means index[] and pieceList[]
   // are not invariant to a do_move() + undo_move() sequence.
   Piece pc = board[s];
+  if (pc == NO_PIECE) return;
+
   byTypeBB[ALL_PIECES] ^= s;
   byTypeBB[type_of(pc)] ^= s;
   byColorBB[color_of(pc)] ^= s;
@@ -456,6 +467,8 @@ inline void Position::move_piece(Square from, Square to) {
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
   Piece pc = board[from];
+  assert(pc != NO_PIECE);
+
   Bitboard fromTo = from | to;
   byTypeBB[ALL_PIECES] ^= fromTo;
   byTypeBB[type_of(pc)] ^= fromTo;

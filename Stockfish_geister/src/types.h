@@ -185,6 +185,7 @@ enum Value : int {
   DistWeight = 1,
 
   RePawnValueMg = 126, RePawnValueEg = 208,
+  ReRookValueMg = 1276, ReRookValueEg = 1380,
   //PawnValueMg   = 126,   PawnValueEg   = 208,
   //KnightValueMg = 781,   KnightValueEg = 854,
   //BishopValueMg = 825,   BishopValueEg = 915,
@@ -242,6 +243,7 @@ enum : int {
 };
 
 //内側6*6を使う
+//もしかして：上が南, 右は東
 enum Square : int {
   SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
   SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
@@ -435,8 +437,12 @@ constexpr bool is_ok(Square s) {
   return s >= SQ_A1 && s <= SQ_H8;
 }
 //内側6*6とゴールを許可
-constexpr bool is_ok_dist(Square s) {
+constexpr bool is_ok_B(Square s) {
   return (s == SQ_B1 || s == SQ_B8 || s == SQ_G1 || s == SQ_G8) || (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
+}
+//内側6*6を許可
+constexpr bool is_ok_R(Square s) {
+  return (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
 }
 
 constexpr File file_of(Square s) {
@@ -476,7 +482,8 @@ constexpr int from_to(Move m) {
 }
 
 constexpr MoveType type_of(Move m) {
-  return MoveType(m & (3 << 14));
+  //return MoveType(m & (3 << 14));
+  return NORMAL;
 }
 
 
@@ -496,10 +503,6 @@ constexpr Move reverse_move(Move m) {
 //constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
 //  return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 //}
-template<MoveType T>
-constexpr Move make(Square from, Square to, PieceType pt = GOAL) {
-  return Move(T + ((pt - GOAL) << 12) + (from << 6) + to);
-}
 
 constexpr bool is_ok(Move m) {
   return from_sq(m) != to_sq(m); // Catch MOVE_NULL and MOVE_NONE

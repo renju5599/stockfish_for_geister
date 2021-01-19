@@ -19,7 +19,6 @@
 #ifndef UCI_H_INCLUDED
 #define UCI_H_INCLUDED
 
-#ifdef false
 
 #include <map>
 #include <string>
@@ -80,20 +79,16 @@ Move to_move(const Position& pos, std::string& str);
 
 extern UCI::OptionsMap Options;
 
-#endif
-
-#include <string>
 
 namespace tcp {
-  void mySend(int dstSocket, std::string str = "");
+  extern Move mv;
+  extern int dstSocket;
 
+  void mySend(int dstSocket, std::string str);
   std::string myRecv(int dstSocket);
+  std::string MoveStr(Move mv);
 
-  bool openPort(int& dstSocket, int port = -1, std::string dest = "");
-
-  void closePort(int& dstSocket);
-
-  std::string setInitRedName(int allNum = 0, int redNum = 0, std::string initRedName = "");
+  int playGame(int port, std::string destination);
 }
 
 #endif // #ifndef UCI_H_INCLUDED

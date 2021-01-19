@@ -1149,29 +1149,10 @@ std::string Eval::trace(const Position& pos) {
 #include "evaluate.h"
 #include "position.h"
 
-namespace Eval {
+namespace {
   int _myGoalDist[1 << 16];	//_myGoalDist[s] = (sのiビット目が1⇔マスiに駒がある)ときのゴールまでのマンハッタン距離の和.
   int _yourGoalDist[1 << 16];
   int bitCountTable[1 << 16];
-  //前処理
-  void init() {
-    int i, j;
-    int dist1[16] = { 1,0,1,2,2,1,0,1,2,1,2,3,3,2,1,2 };
-    int dist2[16] = { 2,1,2,3,3,2,1,2,1,0,1,2,2,1,0,1 };
-
-    for (i = 0; i < (1 << 16); i++) {
-      _myGoalDist[i] = 0;
-      _yourGoalDist[i] = 0;
-      bitCountTable[i] = 0;
-      for (j = 0; j < 16; j++) {
-        if (((i >> j) & 1) == 0) continue;
-        //マスjからゴールまでのマンハッタン距離
-        _myGoalDist[i] += dist1[j];
-        _yourGoalDist[i] += dist2[j];
-        bitCountTable[i]++;
-      }
-    }
-  }
 
   inline int myGoalDist(long long s) {
     return _myGoalDist[s >> 8 & 65535] + _myGoalDist[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 2 + _myGoalDist[s >> 40 & 65535] + bitCountTable[s >> 40 & 65535] * 4;
@@ -1189,37 +1170,62 @@ namespace Eval {
     return 2;
   }
   int getWinPlayer_P(int pnum, const Position& pos) {
-    if (pos.count<RED>(WHITE) == 0) return 0;
-    if (pos.count<BLUE>(WHITE) == 0 || pos.count<PURPLE>(BLACK) <= pnum) return 1;
-    if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK,GOAL)) return 0;
-    if (pos.pieces(BLACK, PURPLE) & pos.pieces(WHITE, GOAL)) return 1;
+    if (pos.count<RED>(WHITE) == 0)
+      return 0;
+    if (pos.count<BLUE>(WHITE) == 0 || pos.count<PURPLE>(BLACK) <= pnum)
+      return 1;
+    if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
+      return 0;
+    if (pos.pieces(BLACK, PURPLE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
+      return 1;
     return 2;
   }
-
-  //searchの方に手番の変数がなさそうだから
-  //きっとそのまま返せばマイナスとか計算してくれると思う
-  //評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
-  Value evaluate_K(const Position& pos) {
-    int winPlayer = getWinPlayer_K(pos);
-    if (winPlayer <= 1) return winPlayer ? VALUE_TB_WIN_IN_MAX_PLY : VALUE_TB_LOSS_IN_MAX_PLY;
-
-    Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
-    Value s1 = ExistWeight * pos.count<BLUE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
-    return s0 - s1;
-  }
-  Value evaluate_P(const Position& pos) {
-    int winPlayer = getWinPlayer_P(pos.count<PURPLE>(BLACK) - pos.count<RED>(BLACK), pos);
-    if (winPlayer <= 1) return winPlayer ? VALUE_TB_WIN_IN_MAX_PLY : VALUE_TB_LOSS_IN_MAX_PLY;
-
-    Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
-    Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));
-    return s0 - s1;
-  }
-  ////評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
-  //int evaluate(int teban) {
-  //  int s0 = bb::weight1 * bb::bitCount(existB) - bb::weight2 * bb::myGoalDist(existB | existR);
-  //  int s1 = -bb::weight2 * bb::yourGoalDist(existP);
-  //  if (teban == 0) return s0 - s1;
-  //  return s1 - s0;
-  //}
 }
+
+
+//前処理
+void Eval::init() {
+  int i, j;
+  int dist1[16] = { 1,0,1,2,2,1,0,1,2,1,2,3,3,2,1,2 };
+  int dist2[16] = { 2,1,2,3,3,2,1,2,1,0,1,2,2,1,0,1 };
+
+  for (i = 0; i < (1 << 16); i++) {
+    _myGoalDist[i] = 0;
+    _yourGoalDist[i] = 0;
+    bitCountTable[i] = 0;
+    for (j = 0; j < 16; j++) {
+      if (((i >> j) & 1) == 0) continue;
+      //マスjからゴールまでのマンハッタン距離
+      _myGoalDist[i] += dist1[j];
+      _yourGoalDist[i] += dist2[j];
+      bitCountTable[i]++;
+    }
+  }
+}
+
+//searchの方に手番の変数がなさそうだから
+//きっとそのまま返せばマイナスとか計算してくれると思う
+//評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
+Value Eval::evaluate_K(const Position& pos) {
+  int winPlayer = getWinPlayer_K(pos);
+  if (winPlayer <= 1) return winPlayer ? VALUE_TB_WIN_IN_MAX_PLY : VALUE_TB_LOSS_IN_MAX_PLY;
+
+  Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
+  Value s1 = ExistWeight * pos.count<BLUE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
+  return s0 - s1;
+}
+Value Eval::evaluate_P(const Position& pos) {
+  int winPlayer = getWinPlayer_P(pos.count<PURPLE>(BLACK) - pos.count<RED>(BLACK), pos);
+  if (winPlayer <= 1) return (winPlayer == 0 ? VALUE_MATE_IN_MAX_PLY : VALUE_MATED_IN_MAX_PLY);
+
+  Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
+  Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));
+  return s0 - s1;
+}
+////評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
+//int evaluate(int teban) {
+//  int s0 = bb::weight1 * bb::bitCount(existB) - bb::weight2 * bb::myGoalDist(existB | existR);
+//  int s1 = -bb::weight2 * bb::yourGoalDist(existP);
+//  if (teban == 0) return s0 - s1;
+//  return s1 - s0;
+//}
