@@ -224,7 +224,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   for (int i = 0; i < 4; ++i) 
     ss >> token;  //MOV?
   int in_cnt = 0;
-  while (ss >> token) {
+  while (ss >> token && !isspace(token)) {
     if (isdigit(token)) {
       if (in_cnt == 0) {
         sq += (token - '0' + 1) * EAST;
@@ -257,8 +257,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   }*/
 
   // 2. Active color
-  //ss >> token;
-  //sideToMove = (token == 'w' ? WHITE : BLACK);
+  //if(ss >> token)
+  //  sideToMove = (token == 'w' ? WHITE : BLACK);
   //ss >> token;
 
   // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,

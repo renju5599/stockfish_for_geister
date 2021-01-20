@@ -100,6 +100,7 @@ public:
   Piece piece_on(Square s) const;
   //Square ep_square() const;
   bool empty(Square s) const;
+
   template<PieceType Pt> int count(Color c) const;
   template<PieceType Pt> int count() const;
   template<PieceType Pt> const Square* squares(Color c) const;

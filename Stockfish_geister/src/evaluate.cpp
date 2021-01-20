@@ -1148,6 +1148,7 @@ std::string Eval::trace(const Position& pos) {
 
 #include "evaluate.h"
 #include "position.h"
+#include "Game_geister.h"
 
 namespace {
   int _myGoalDist[1 << 16];	//_myGoalDist[s] = (sのiビット目が1⇔マスiに駒がある)ときのゴールまでのマンハッタン距離の和.
@@ -1215,12 +1216,15 @@ Value Eval::evaluate_K(const Position& pos) {
   return s0 - s1;
 }
 Value Eval::evaluate_P(const Position& pos) {
-  int winPlayer = getWinPlayer_P(pos.count<PURPLE>(BLACK) - pos.count<RED>(BLACK), pos);
-  if (winPlayer <= 1) return (winPlayer == 0 ? VALUE_MATE_IN_MAX_PLY : VALUE_MATED_IN_MAX_PLY);
+  int bNum = Game_::uNum - Game_::rNum;
+  int winPlayer = getWinPlayer_P(bNum, pos);
+  if (winPlayer != 2)
+    return (winPlayer == pos.side_to_move() ? VALUE_MATE_IN_MAX_PLY : VALUE_MATED_IN_MAX_PLY);
 
   Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
-  Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));
-  return s0 - s1;
+  Value s1 = - DistWeight * yourGoalDist(pos.pieces(BLACK));
+  if(pos.side_to_move() == WHITE) return s0 - s1;
+  else return s1 - s0;
 }
 ////評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
 //int evaluate(int teban) {

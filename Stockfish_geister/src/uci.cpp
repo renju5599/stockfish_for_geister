@@ -481,7 +481,7 @@ namespace {
       //‚±‚±‚Í“K“–
 
       //else if (token == "movetime")  is >> limits.movetime;
-      limits.movetime = 3000;
+      limits.movetime = 5000;
       //else if (token == "mate")      is >> limits.mate;
       //limits.mate = 1;  //mate‚ª‚æ‚­‚í‚©‚ç‚ñ
 

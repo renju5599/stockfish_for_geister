@@ -286,6 +286,7 @@ void MainThread::search() {
 
   //std::cout << sync_endl;
 
+  std::cout << bestThread->rootMoves[0].score << std::endl;
   tcp::mv = bestThread->rootMoves[0].pv[0];
   tcp::mySend(tcp::dstSocket, tcp::MoveStr(tcp::mv));			//s“®‚Ì‘—M
 }
