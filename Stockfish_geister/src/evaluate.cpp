@@ -1145,10 +1145,14 @@ std::string Eval::trace(const Position& pos) {
 }
 #endif
 
+#include <tuple>
+#include <algorithm>
+#include <vector>
 
 #include "evaluate.h"
 #include "position.h"
 #include "Game_geister.h"
+#include "search.h"
 
 namespace {
   int _myGoalDist[1 << 16];	//_myGoalDist[s] = (sのiビット目が1⇔マスiに駒がある)ときのゴールまでのマンハッタン距離の和.
@@ -1164,21 +1168,29 @@ namespace {
 
 
   int getWinPlayer_K(const Position& pos) {
-    if (pos.count<RED>(WHITE) == 0 || pos.count<BLUE>(BLACK) == 0) return 0;
-    if (pos.count<BLUE>(WHITE) == 0 || pos.count<RED>(BLACK) == 0) return 1;
-    if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL)) return 0;
-    if (pos.pieces(BLACK, RED) & pos.pieces(WHITE, GOAL)) return 1;
+    if (pos.count<RED>(WHITE) == 0 || pos.count<PURPLE>(BLACK) == 0)
+      return 0;
+    if (pos.count<BLUE>(WHITE) == 0)
+      return 1;
+    if (pos.count<RED>(BLACK) == 0)
+      return 1;
+    if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
+      return 0;
+    if (pos.pieces(BLACK, RED) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
+      return 1;
     return 2;
   }
   int getWinPlayer_P(int pnum, const Position& pos) {
     if (pos.count<RED>(WHITE) == 0)
-      return 0;
-    if (pos.count<BLUE>(WHITE) == 0 || pos.count<PURPLE>(BLACK) <= pnum)
-      return 1;
+      return pos.side_to_move() == WHITE;
+    if (pos.count<BLUE>(WHITE) == 0)
+      return pos.side_to_move() == BLACK;
+    if (pos.count<PURPLE>(BLACK) <= pnum)
+      return pos.side_to_move() == BLACK;
     if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
-      return 0;
+      return pos.side_to_move() == WHITE;
     if (pos.pieces(BLACK, PURPLE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
-      return 1;
+      return pos.side_to_move() == BLACK;
     return 2;
   }
 }
@@ -1205,26 +1217,32 @@ void Eval::init() {
 }
 
 //searchの方に手番の変数がなさそうだから
-//きっとそのまま返せばマイナスとか計算してくれると思う
 //評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
-Value Eval::evaluate_K(const Position& pos) {
+Value Eval::evaluate_K(const Position& pos, int depth) {
   int winPlayer = getWinPlayer_K(pos);
-  if (winPlayer <= 1) return winPlayer ? VALUE_TB_WIN_IN_MAX_PLY : VALUE_TB_LOSS_IN_MAX_PLY;
-
-  Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
-  Value s1 = ExistWeight * pos.count<BLUE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
-  return s0 - s1;
-}
-Value Eval::evaluate_P(const Position& pos) {
-  int bNum = Game_::uNum - Game_::rNum;
-  int winPlayer = getWinPlayer_P(bNum, pos);
   if (winPlayer != 2)
-    return (winPlayer == pos.side_to_move() ? VALUE_MATE_IN_MAX_PLY : VALUE_MATED_IN_MAX_PLY);
+    return (winPlayer == pos.side_to_move() ? VALUE_MATE_IN_MAX_PLY + depth : VALUE_MATED_IN_MAX_PLY - depth);
 
   Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
-  Value s1 = - DistWeight * yourGoalDist(pos.pieces(BLACK));
-  if(pos.side_to_move() == WHITE) return s0 - s1;
+  Value s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
+  if (pos.side_to_move() == WHITE) return s0 - s1;
   else return s1 - s0;
+}
+Value Eval::evaluate_P(const Position& pos, int depth) {
+  if (Red::existRed) {
+    return Eval::evaluate_K(pos, depth);
+  }
+  else {
+    int bNum = Game_::uNum - Game_::rNum;
+    int winPlayer = getWinPlayer_P(bNum, pos);
+    if (winPlayer != 2)
+      return (winPlayer ? VALUE_MATE_IN_MAX_PLY + depth : VALUE_MATED_IN_MAX_PLY - depth);
+
+    Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
+    Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));
+    if (pos.side_to_move() == WHITE) return s0 - s1;
+    else return s1 - s0;
+  }
 }
 ////評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
 //int evaluate(int teban) {
@@ -1233,3 +1251,231 @@ Value Eval::evaluate_P(const Position& pos) {
 //  if (teban == 0) return s0 - s1;
 //  return s1 - s0;
 //}
+
+namespace {
+
+  //追いかけの判定
+  bool isOikake(char board[][6], Move mv) {
+    const int dy[4] = { -1, 0, 1, 0 };
+    const int dx[4] = { 0, 1, 0, -1 };
+
+    int from_y = rank_of(from_sq(mv)) - 1;
+    int to_y = rank_of(to_sq(mv)) - 1;
+    int from_x = file_of(from_sq(mv)) - 1;
+    int to_x = file_of(to_sq(mv)) - 1;
+    if (!is_ok_R(to_sq(mv))) return false;	//脱出手は「追いかけ」ではない
+    if (board[to_y][to_x] == 'u') return false;			//駒を取る手は「追いかけ」ではない
+
+    int i;
+    for (i = 0; i < 4; i++) {
+      int y = from_y + dy[i];
+      int x = from_x + dx[i];
+      if (0 <= y && y < 6 && 0 <= x && x < 6 && board[y][x] == 'u') {
+        break;
+      }
+    }
+    if (i < 4) { return false; }	//動かす駒の「動かす前のマス」と隣接するマスに相手の駒があったら「追いかけ」ではない
+
+    for (i = 0; i < 4; i++) {
+      int y = to_y + dy[i];
+      int x = to_x + dx[i];
+      if (0 <= y && y < 6 && 0 <= x && x < 6 && board[y][x] == 'u') {
+        break;
+      }
+    }
+    if (i == 4) { return false; }	//動かす駒の「動かした後のマス」と隣接するマスに相手の駒がなかったら「追いかけ」ではない
+    return true;	//「追いかけ」である
+  }
+
+  void moveHist(char prev[6][6], char now[6][6], Move mv) {
+    int from_y = rank_of(from_sq(mv)) - 1;
+    int from_x = file_of(from_sq(mv)) - 1;
+    int to_y = rank_of(to_sq(mv)) - 1;
+    int to_x = file_of(to_sq(mv)) - 1;
+    int i, j;
+
+    for (i = 0; i < 6; i++)
+      for (j = 0; j < 6; j++)
+        now[i][j] = prev[i][j];
+
+    char color = prev[from_y][from_x];	//R, B, u
+    now[to_y][to_x] = color;
+    now[from_y][from_x] = '.';
+  }
+  void moveEval(int prev[6][6], int now[6][6], Move mv) {
+    int from_y = rank_of(from_sq(mv)) - 1;
+    int from_x = file_of(from_sq(mv)) - 1;
+    int to_y = rank_of(to_sq(mv)) - 1;
+    int to_x = file_of(to_sq(mv)) - 1;
+    int i, j;
+
+    for (i = 0; i < 6; i++)
+      for (j = 0; j < 6; j++)
+        now[i][j] = prev[i][j];
+
+    now[to_y][to_x] = prev[from_y][from_x];
+    now[from_y][from_x] = 0;
+  }
+  Move detectMove(char prev[6][6], char now[6][6]) {
+    int i, j;
+    int cnt = 0;
+    int posY[2], posX[2];
+
+    for (i = 0; i < 6; i++) {
+      for (j = 0; j < 6; j++) {
+        if (prev[i][j] != now[i][j]) {
+          posY[cnt] = i;
+          posX[cnt] = j;
+          cnt++;
+        }
+      }
+    }
+    assert(cnt == 2);
+
+    int y, x, ny, nx;
+    if (now[posY[0]][posX[0]] == '.') {
+      y = posY[0];
+      x = posX[0];
+      ny = posY[1];
+      nx = posX[1];
+    }
+    else {
+      y = posY[1];
+      x = posX[1];
+      ny = posY[0];
+      nx = posX[0];
+    }
+
+    return make_move(make_square((File)(x + 1), (Rank)(y + 1)), make_square((File)(nx + 1), (Rank)(ny + 1)));
+  }
+}
+
+namespace Red {
+  int histCnt;
+  char hist[350][6][6];	//R, B, u
+  int eval[350][6][6];	//赤度
+  bool existRed;
+}
+
+//試合開始時に呼び出す
+void Red::init() {
+  Red::histCnt = 0;
+}
+
+//自分が手を打ったときに呼び出す
+void Red::myMove(Move mv) {
+  moveHist(Red::hist[Red::histCnt - 1], Red::hist[Red::histCnt], mv);
+  moveEval(Red::eval[Red::histCnt - 1], Red::eval[Red::histCnt], mv);
+  Red::histCnt++;
+}
+//2手目以降の自分手番の最初に呼び出す。
+void Red::myTurn(char board[6][6]) {
+  int i, j;
+
+  if (Red::histCnt == 0) {
+    for (i = 0; i < 6; i++) {
+      for (j = 0; j < 6; j++) {
+        Red::hist[0][i][j] = board[i][j];
+        Red::eval[0][i][j] = 0;
+      }
+    }
+    Red::histCnt++;
+    return;
+  }
+
+  for (i = 0; i < 6; i++)
+    for (j = 0; j < 6; j++)
+      Red::hist[Red::histCnt][i][j] = board[i][j];
+  Red::histCnt++;
+
+  Move mv = detectMove(Red::hist[Red::histCnt - 2], Red::hist[Red::histCnt - 1]);
+  moveEval(Red::eval[Red::histCnt - 2], Red::eval[Red::histCnt - 1], mv);
+  int from_y = rank_of(from_sq(mv)) - 1;
+  int to_y = rank_of(to_sq(mv)) - 1;
+  int from_x = file_of(from_sq(mv)) - 1;
+  int to_x = file_of(to_sq(mv)) - 1;
+
+  char block_op[6][6];
+  int prevMyRed = 0;
+  for (i = 0; i < 6; i++) {
+    for (j = 0; j < 6; j++) {
+      char c = Red::hist[Red::histCnt - 2][i][j];
+      if (c == 'R' || c == 'B')
+        block_op[i][j] = 'u';
+      else
+        block_op[i][j] = '.';
+
+      if (c == 'R')
+        prevMyRed++;
+    }
+  }
+
+  const int weightOikake = 5;
+  const int weightOikakePinti = 1;	//相手がピンチなとき、わけわからん行動しそうなので、推定の信頼を低めに
+  if (isOikake(block_op, mv)) {
+    if (prevMyRed == 1) {
+      Red::eval[Red::histCnt - 1][to_y][to_x] += weightOikakePinti;
+    }
+    else {
+      Red::eval[Red::histCnt - 1][to_y][to_x] += weightOikake;
+    }
+  }
+
+  //相手が動かした駒を見て、それが青だったら自分がどう頑張っても必ず負けるとき、赤だと思って
+  //見捨てる。
+  //本当はちゃんと「相手側の必勝手探索」を実装したかったけど、時間がないので手抜きで。
+  const int weightHairi = 1000;
+  if ((from_y == 5 && from_x == 0) || (from_y == 5 && from_x == 5)) {	//こいつ脱出しなかったから赤だゾ
+    Red::eval[Red::histCnt - 1][to_y][to_x] += weightHairi;
+  }
+
+  //今脱出口にある相手駒が、直前に動かしてきたものでなければ、赤
+  if (Red::hist[Red::histCnt - 1][5][0] == 'u' && !(to_y == 5 && to_x == 0)) {
+    Red::eval[Red::histCnt - 1][5][0] += weightHairi;
+  }
+  if (Red::hist[Red::histCnt - 1][5][5] == 'u' && !(to_y == 5 && to_x == 5)) {
+    Red::eval[Red::histCnt - 1][5][5] += weightHairi;
+  }
+}
+
+//myMoveとかmyTurnとかを呼び出した直後に呼び出したい。
+//赤度evalが閾値以上になった赤の現在位置を、赤度が大きいものからリストアップ
+//実は最大のやつしか使ってなかったのでpicUpを作って使う
+//閾値以上のやつは全部赤にしてしまえばよいのでは
+//ソートされるということは評価値に使おうとしていたのかも
+int Red::listUpRed(int posY[], int posX[], int X) {
+  int i, j;
+
+  typedef std::tuple<int, int, int> T;
+  std::vector<T> vec;
+
+  for (i = 0; i < 6; i++) {
+    for (j = 0; j < 6; j++) {
+      if (Red::eval[Red::histCnt - 1][i][j] >= X) {
+        vec.push_back(T(Red::eval[Red::histCnt - 1][i][j], i, j));
+      }
+    }
+  }
+
+  sort(vec.begin(), vec.end(), std::greater<T>());
+  for (i = 0; i < vec.size(); i++) {
+    posY[i] = std::get<1>(vec[i]);
+    posX[i] = std::get<2>(vec[i]);
+  }
+  return vec.size();
+}
+
+Square Red::picUpRed(int X) {
+  int i, j;
+  int max_eval = X;
+  Square resq = SQ_NONE;
+  for (i = 0; i < 6; i++) {
+    for (j = 0; j < 6; j++) {
+      if (Red::eval[Red::histCnt - 1][i][j] >= max_eval) {
+        max_eval = Red::eval[Red::histCnt - 1][i][j];
+        resq = make_square((File)(j + 1), (Rank)(i + 1));
+      }
+    }
+  }
+  return resq;
+}

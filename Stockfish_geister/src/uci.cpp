@@ -22,6 +22,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <fstream>
+#include <ctime>
 
 #include "evaluate.h"
 #include "movegen.h"
@@ -444,8 +446,7 @@ namespace {
     if (allNum == 8) return initRedName;
     int ransu = rand() % (8 - allNum);
     if (ransu < 4 - redNum) {
-      initRedName += (char)('A' + allNum);
-      return setInitRedName(allNum + 1, redNum + 1, initRedName);
+      return setInitRedName(allNum + 1, redNum + 1, initRedName + (char)('A' + allNum));
     }
     else {
       return setInitRedName(allNum + 1, redNum, initRedName);
@@ -481,7 +482,7 @@ namespace {
       //ここは適当
 
       //else if (token == "movetime")  is >> limits.movetime;
-      limits.movetime = 5000;
+      limits.movetime = 3000;
       //else if (token == "mate")      is >> limits.mate;
       //limits.mate = 1;  //mateがよくわからん
 
@@ -536,14 +537,14 @@ void Game_::recvBoard(string msg) {
 
   for (i = 0; i < 6; i++) {
     for (j = 0; j < 6; j++) {
-      board[i][j] = '.';
-      komaName[i][j] = '.';
+      Game_::board[i][j] = '.';
+      Game_::komaName[i][j] = '.';
     }
   }
 
   const int baius = 4;
-  rNum = 4;	//敵の赤い駒の個数
-  uNum = 0;
+  Game_::rNum = 4;	//敵の赤い駒の個数
+  Game_::uNum = 0;
 
   for (i = 0; i < 16; i++) {
     int x = msg[baius + 3 * i] - '0';
@@ -552,25 +553,55 @@ void Game_::recvBoard(string msg) {
 
     if (0 <= x && x < 6 && 0 <= y && y < 6) {
       if (type == 'R' || type == 'B' || type == 'u') {
-        board[y][x] = type;
+        Game_::board[y][x] = type;
       }
       if (i < 8) {
-        komaName[y][x] = (char)(i + 'A');
+        Game_::komaName[y][x] = (char)(i + 'A');
       }
       else {
-        komaName[y][x] = (char)(i - 8 + 'a');
+        Game_::komaName[y][x] = (char)(i - 8 + 'a');
       }
     }
     else {
-      if (type == 'r' && i >= 8) rNum--;
+      if (type == 'r' && i >= 8) Game_::rNum--;
     }
-    if (type == 'u') uNum++;
+    if (type == 'u') Game_::uNum++;
   }
+}
+
+//終了の原因
+string Game_:: getEndInfo(string recv_msg) {
+  if (startWith(recv_msg, "DRW")) return "draw";
+
+  int i, Rnum = 0, Bnum = 0, rnum = 0, bnum = 0;
+  const int baius = 4;
+
+  for (i = 0; i < 16; i++) {
+    int x = recv_msg[baius + 3 * i] - '0';
+    int y = recv_msg[baius + 3 * i + 1] - '0';
+    char type = recv_msg[baius + 3 * i + 2];
+
+    if (0 <= x && x < 6 && 0 <= y && y < 6) {
+      if (type == 'R') Rnum++;
+      if (type == 'B') Bnum++;
+      if (type == 'r') rnum++;
+      if (type == 'b') bnum++;
+    }
+  }
+
+  if (startWith(recv_msg, "WON")) {
+    if (Rnum == 0) { return "won taken R"; }
+    if (bnum == 0) { return "won taked b"; }
+    return "won escaped B";
+  }
+
+  if (rnum == 0) { return "lost taked r"; }
+  if (Bnum == 0) { return "lost taken B"; }
+  return "lost escaped b";
 }
 
 
 namespace tcp {
-  Move mv;
   int dstSocket;
 }//namespace tcp
 
@@ -633,55 +664,81 @@ string tcp::MoveStr(Move mv) {
 
 
 //UCI::loop の代わりになるように動かそうと思っている
-//進捗状況：Stackoverflowが起きる
-int tcp::playGame(int port = -1, string destination = "") {
+int tcp::playGame(int n, int port = -1, string destination = "") {
+  
+  int total = 0;
 
-  if (!openPort(dstSocket, port, destination)) return 0;
-  string initRedName = setInitRedName();
-  tcp::myRecv(dstSocket);							//SET ?の受信
-  tcp::mySend(dstSocket, "SET:" + initRedName);	//SET:EFGHのように入力 (して, [\r][\n][\0]を末尾につけて送信)
-  tcp::myRecv(dstSocket);							//OK, NGの受信
+  //ファイル出力の奴ら
+  string filename = "result.txt";
+  ofstream wfile;
+  wfile.open(filename, std::ios::out);
 
-  Search::clear();
+  while (n--) {
 
-  int turnCnt = 0;
-  int res;
-  string recv_msg;
+    if (!openPort(dstSocket, port, destination)) return 0;
+    srand((unsigned)time(NULL));
+    string initRedName = setInitRedName();
+    tcp::myRecv(dstSocket);							//SET ?の受信
+    tcp::mySend(dstSocket, "SET:" + initRedName);	//SET:EFGHのように入力 (して, [\r][\n][\0]を末尾につけて送信)
+    tcp::myRecv(dstSocket);							//OK, NGの受信
 
-  Position pos;
-  StateListPtr states(new deque<StateInfo>(1));
+    Search::clear();
 
-  pos.set(StartFEN, false, &states->back(), Threads.main());
+    int res;
+    string recv_msg;
 
-  while (1) {
-    //Threads.stop = true;
+    Position pos;
+    StateListPtr states(new deque<StateInfo>(1));
 
-    recv_msg = tcp::myRecv(dstSocket);	//盤面の受信
-    res = Game_::isEnd(recv_msg);
-    if (res) break;					//終了判定
+    pos.set(StartFEN, false, &states->back(), Threads.main());
+    Red::init();
+    
+    while (1) {
 
-    //position.cppに recvBoardを移植して、Threadとかをいじれるようにする？
-    Game_::recvBoard(recv_msg);			//駒を配置
-    pos.recvBoard(recv_msg, Threads.main());
-    states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-    pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
+      recv_msg = tcp::myRecv(dstSocket);	//盤面の受信
+      res = Game_::isEnd(recv_msg);
+      if (res) break;					//終了判定
 
-    //多分大丈夫そう
-    //string mv = solve(turnCnt);		//思考
-    go(pos, states);
+      //position.cppに recvBoardを移植して、Threadとかをいじれるようにする？
+      Game_::recvBoard(recv_msg);			//駒を配置
+      Red::myTurn(Game_::board);
+      cerr << "赤度" << endl;
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+          cerr << Red::eval[Red::histCnt - 1][i][j] << " ";
+        }
+        cerr << endl;
+      }
+      states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+      pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
+      Square sq_red = Red::picUpRed(1000);
+      if (Red::existRed = (sq_red != SQ_NONE)) {
+        std::cout << Game_::komaName[rank_of(sq_red) - 1][file_of(sq_red) - 1] << " が赤っぽい" << std::endl;
+        pos.piece_change(B_RED, sq_red);
+      }
 
-    tcp::myRecv(tcp::dstSocket);				//ACKの受信
+      //多分大丈夫そう
+      //string mv = solve(turnCnt);		//思考
+      go(pos, states);
 
-    turnCnt += 2;
+      tcp::myRecv(tcp::dstSocket);				//ACKの受信
+
+    }
+
+    //終了の原因(Game.h)
+    //string s = Game_::getEndInfo(recv_msg);
+    //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
+    //endInfo[s]++;
+    wfile << Game_::getEndInfo(recv_msg) << endl;
+
+
+    closePort(dstSocket);
+
+    //red::saveGame();
+    total += res;
   }
 
-  //終了の原因(Game.h)
-  //string s = Game_::getEndInfo(recv_msg);
-  //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
-  //endInfo[s]++;
+  wfile.close();
 
-  closePort(dstSocket);
-  //red::saveGame();
-  return res;
-
+  return total;
 }

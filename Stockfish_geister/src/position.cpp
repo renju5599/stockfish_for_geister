@@ -492,6 +492,8 @@ const string Position::fen() const {
         ss << 'B';
       else if (pc == B_PURPLE)
         ss << 'u';
+      else if (pc == B_RED)
+        ss << 'r';
     }
   }
 
@@ -1498,39 +1500,4 @@ bool Position::pos_is_ok() const {
   //    }
 
   return true;
-}
-
-
-//ボードの受信
-void Position::recvBoard(string msg, Thread* th) {
-  for (Square sq = SQ_B2; sq <= SQ_G7; ++sq) {
-    if (!is_ok_B(sq)) continue;
-    Position::remove_piece(sq);
-  }
-  put_piece(W_GOAL, SQ_B8);
-  put_piece(W_GOAL, SQ_G8);
-  put_piece(B_GOAL, SQ_B1);
-  put_piece(B_GOAL, SQ_G1);
-
-  const int baius = 4;
-
-  for (int i = 0; i < 16; i++) {
-    int x = msg[baius + 3 * i] - '0' + 1;
-    int y = msg[baius + 3 * i + 1] - '0' + 1;
-    char type = msg[baius + 3 * i + 2];
-
-    if (1 <= x && x <= 6 && 1 <= y && y <= 6) {
-      if (type == 'R') {
-        put_piece(W_RED, make_square((File)x, (Rank)y));
-      }
-      else if (type == 'B') {
-        put_piece(W_BLUE, make_square((File)x, (Rank)y));
-      }
-      else if (type == 'u') {
-        put_piece(B_PURPLE, make_square((File)x, (Rank)y));
-      }
-    }
-  }
-
-  thisThread = th;
 }

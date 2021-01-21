@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
   
 
   //UCI::loop(argc, argv);
-  tcp::playGame(port, destination);
+  tcp::playGame(n, port, destination);
 
   Threads.set(0);
   return 0;

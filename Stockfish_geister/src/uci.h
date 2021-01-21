@@ -81,14 +81,13 @@ extern UCI::OptionsMap Options;
 
 
 namespace tcp {
-  extern Move mv;
   extern int dstSocket;
 
   void mySend(int dstSocket, std::string str);
   std::string myRecv(int dstSocket);
   std::string MoveStr(Move mv);
 
-  int playGame(int port, std::string destination);
+  int playGame(int n, int port, std::string destination);
 }
 
 #endif // #ifndef UCI_H_INCLUDED

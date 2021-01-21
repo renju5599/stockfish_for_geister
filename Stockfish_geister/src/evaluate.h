@@ -65,8 +65,8 @@ namespace Eval {
 
   void init();
 
-  Value evaluate_K(const Position& pos);
-  Value evaluate_P(const Position& pos);
+  Value evaluate_K(const Position& pos, int depth);
+  Value evaluate_P(const Position& pos, int depth);
 
 }
 

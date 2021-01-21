@@ -34,6 +34,7 @@
 #include "tt.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
+#include "Game_geister.h"
 
 namespace Search {
 
@@ -287,8 +288,9 @@ void MainThread::search() {
   //std::cout << sync_endl;
 
   std::cout << bestThread->rootMoves[0].score << std::endl;
-  tcp::mv = bestThread->rootMoves[0].pv[0];
-  tcp::mySend(tcp::dstSocket, tcp::MoveStr(tcp::mv));			//行動の送信
+  Move mv = bestThread->rootMoves[0].pv[0];
+  Red::myMove(mv);
+  tcp::mySend(tcp::dstSocket, tcp::MoveStr(mv));			//行動の送信
 }
 
 
@@ -634,7 +636,7 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos)
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos, depth)
                                                         : value_draw(pos.this_thread());
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -789,7 +791,7 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate_P(pos);
+            ss->staticEval = eval = evaluate_P(pos, depth);
 
         if (eval == VALUE_DRAW)
             eval = value_draw(thisThread);
@@ -802,7 +804,7 @@ namespace {
     else
     {
         if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate_P(pos);
+            ss->staticEval = eval = evaluate_P(pos, depth);
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
@@ -1439,7 +1441,7 @@ moves_loop: // When in check, search starts from here
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos) : VALUE_DRAW;
+        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos, depth) : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1475,7 +1477,7 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate_P(pos);
+                ss->staticEval = bestValue = evaluate_P(pos, depth);
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1484,7 +1486,7 @@ moves_loop: // When in check, search starts from here
         }
         else
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate_P(pos)
+            (ss-1)->currentMove != MOVE_NULL ? evaluate_P(pos, depth)
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta

@@ -88,8 +88,6 @@ public:
   Position& set(const std::string& code, Color c, StateInfo* si);
   const std::string fen() const;
   Position& clear(StateInfo* si, Thread* th);
-  // ガイスターの方から(Game.h)
-  void recvBoard(std::string msg, Thread* th);
 
   // Position representation
   Bitboard pieces(PieceType pt) const;
@@ -177,6 +175,8 @@ public:
 
   // Used by NNUE
   StateInfo* state() const;
+
+  void piece_change(Piece pc, Square s);
 
 private:
   // Initialization helpers (used while setting up a position)
@@ -488,6 +488,15 @@ inline void Position::do_move(Move m, StateInfo& newSt) {
 inline StateInfo* Position::state() const {
 
   return st;
+}
+
+inline void Position::piece_change(Piece pc, Square s) {
+  assert(s != SQ_NONE);
+  assert(pc != NO_PIECE);
+  assert(piece_on(s) != NO_PIECE);
+
+  remove_piece(s);
+  put_piece(pc, s);
 }
 
 #endif // #ifndef POSITION_H_INCLUDED
