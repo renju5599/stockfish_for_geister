@@ -736,6 +736,8 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
 
     //red::saveGame();
     total += res;
+
+    Sleep(1000);
   }
 
   wfile.close();
