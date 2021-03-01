@@ -213,8 +213,6 @@ void Search::clear() {
 /// MainThread::search() is started when the program receives the UCI 'go'
 /// command. It searches from the root position and outputs the "bestmove".
 
-//sync_coutをコメント化しました（出力が怖いので）//やっぱり部分的にコメント解除した
-//最後にmvの値を変更するようにしました
 void MainThread::search() {
 
   if (Limits.perft)
@@ -275,10 +273,8 @@ void MainThread::search() {
   bestPreviousScore = bestThread->rootMoves[0].score;
 
   // Send again PV info if we have a new best thread
-  //if (bestThread != this)
-  //    sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
   if (bestThread != this)
-    UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE);
+      sync_cout << UCI::pv(bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE) << sync_endl;
 
   //sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
@@ -454,8 +450,7 @@ void Thread::search() {
                 && multiPV == 1
                 && (bestValue <= alpha || bestValue >= beta)
                 && Time.elapsed() > 3000)
-                //sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
-                UCI::pv(rootPos, rootDepth, alpha, beta);
+                sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
 
               // In case of failing low/high increase aspiration window and
               // re-search, otherwise exit the loop.
@@ -486,8 +481,7 @@ void Thread::search() {
 
           if (mainThread
             && (Threads.stop || pvIdx + 1 == multiPV || Time.elapsed() > 3000))
-            //sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
-            UCI::pv(rootPos, rootDepth, alpha, beta);
+            sync_cout << UCI::pv(rootPos, rootDepth, alpha, beta) << sync_endl;
       }
 
       if (!Threads.stop)
@@ -503,6 +497,7 @@ void Thread::search() {
           && bestValue >= VALUE_MATE_IN_MAX_PLY
           && VALUE_MATE - bestValue <= 2 * Limits.mate)
           Threads.stop = true;
+      //sync_cout << "bestvalue:" << bestValue << sync_endl;
 
       if (!mainThread)
           continue;
@@ -575,7 +570,6 @@ namespace {
   
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
-
     constexpr bool PvNode = NT == PV;
     const bool rootNode = PvNode && ss->ply == 0;
 
@@ -636,7 +630,7 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos, depth)
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos, ss->ply)
                                                         : value_draw(pos.this_thread());
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -791,7 +785,7 @@ namespace {
         // Never assume anything about values stored in TT
         ss->staticEval = eval = tte->eval();
         if (eval == VALUE_NONE)
-            ss->staticEval = eval = evaluate_P(pos, depth);
+            ss->staticEval = eval = evaluate_P(pos, ss->ply);
 
         if (eval == VALUE_DRAW)
             eval = value_draw(thisThread);
@@ -804,7 +798,7 @@ namespace {
     else
     {
         if ((ss-1)->currentMove != MOVE_NULL)
-            ss->staticEval = eval = evaluate_P(pos, depth);
+            ss->staticEval = eval = evaluate_P(pos, ss->ply);
         else
             ss->staticEval = eval = -(ss-1)->staticEval + 2 * Tempo;
 
@@ -1441,7 +1435,7 @@ moves_loop: // When in check, search starts from here
     // Check for an immediate draw or maximum ply reached
     if (   pos.is_draw(ss->ply)
         || ss->ply >= MAX_PLY)
-        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos, depth) : VALUE_DRAW;
+        return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate_P(pos, ss->ply) : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
@@ -1477,7 +1471,7 @@ moves_loop: // When in check, search starts from here
         {
             // Never assume anything about values stored in TT
             if ((ss->staticEval = bestValue = tte->eval()) == VALUE_NONE)
-                ss->staticEval = bestValue = evaluate_P(pos, depth);
+                ss->staticEval = bestValue = evaluate_P(pos, ss->ply);
 
             // Can ttValue be used as a better position evaluation?
             if (    ttValue != VALUE_NONE
@@ -1486,7 +1480,7 @@ moves_loop: // When in check, search starts from here
         }
         else
             ss->staticEval = bestValue =
-            (ss-1)->currentMove != MOVE_NULL ? evaluate_P(pos, depth)
+            (ss-1)->currentMove != MOVE_NULL ? evaluate_P(pos, ss->ply)
                                              : -(ss-1)->staticEval + 2 * Tempo;
 
         // Stand pat. Return immediately if static value is at least beta

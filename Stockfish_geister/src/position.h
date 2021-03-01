@@ -77,6 +77,7 @@ class Thread;
 
 class Position {
 public:
+  void print();
   static void init();
 
   Position() = default;

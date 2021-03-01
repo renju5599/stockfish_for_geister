@@ -52,8 +52,8 @@ namespace {
   // FEN string of the initial position, normal chess
   //const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   //const char* StartFEN = "1g4g1/2uuuu2/2uuuu2/8/8/2RRRR2/2BBBB2/1G4G1 w KQkq - 0 1";
-  const char* StartFEN = "14R24R34R44R15B25B35B45B41u31u21u11u40u30u20u10u";
-
+  //const char* StartFEN = "MOV?01B99b99b99b04R99r99r99r05u99b99b99b50u99r99r99r";
+  const char* StartFEN = "MOV?99r99b53B21R14R24B32R43B51u99r99r99r50u04u41u03u";
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
@@ -426,7 +426,8 @@ namespace {
     dstSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     //接続
-    if (connect(dstSocket, (struct sockaddr*)&dstAddr, sizeof(dstAddr))) {
+    if (connect(dstSocket, (struct sockaddr*)&dstAddr, sizeof(dstAddr)) && WSAGetLastError() != WSAEWOULDBLOCK) {
+      printf("%d\n", WSAGetLastError());
       printf("%s　に接続できませんでした\n", destination);
       return false;
     }
@@ -482,19 +483,20 @@ namespace {
       //ここは適当
 
       //else if (token == "movetime")  is >> limits.movetime;
-      limits.movetime = 3000;
+      limits.movetime = 6000;
       //else if (token == "mate")      is >> limits.mate;
-      //limits.mate = 1;  //mateがよくわからん
+      limits.mate = VALUE_MATE;  //よくわからん
 
       //else if (token == "perft")     is >> limits.perft;
       //perftがわからない
 
       //else if (token == "infinite")  limits.infinite = 1;
-    limits.infinite = 1;
+
       //else if (token == "ponder")    ponderMode = true;
       //ponderをtrueにするべきなのかわからない
 
     Threads.start_thinking(pos, states, limits, ponderMode);
+    //pos.print();
   }
 
 
@@ -696,6 +698,8 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
     while (1) {
 
       recv_msg = tcp::myRecv(dstSocket);	//盤面の受信
+      //recv_msg = StartFEN;
+
       res = Game_::isEnd(recv_msg);
       if (res) break;					//終了判定
 
@@ -711,7 +715,10 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
       }
       states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
       pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
-      Square sq_red = Red::picUpRed(1000);
+      Square sq_red = Red::picUpRed(20);
+      //sq_red = SQUARE_ZERO;
+      //sq_red += 1 * EAST;
+      //sq_red += 5 * NORTH;
       if (Red::existRed = (sq_red != SQ_NONE)) {
         std::cout << Game_::komaName[rank_of(sq_red) - 1][file_of(sq_red) - 1] << " が赤っぽい" << std::endl;
         pos.piece_change(B_RED, sq_red);
@@ -719,14 +726,25 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
 
       //多分大丈夫そう
       //string mv = solve(turnCnt);		//思考
-      go(pos, states);
+      if (pos.piece_on(SQ_B2) == W_BLUE) {
+        Move mv = make_move(SQ_B2, SQ_B1);
+        Red::myMove(mv);
+        tcp::mySend(tcp::dstSocket, tcp::MoveStr(mv));			//行動の送信
+      }
+      else if (pos.piece_on(SQ_G2) == W_BLUE) {
+        Move mv = make_move(SQ_G2, SQ_G1);
+        Red::myMove(mv);
+        tcp::mySend(tcp::dstSocket, tcp::MoveStr(mv));			//行動の送信
+      }
+      else
+        go(pos, states);
 
       tcp::myRecv(tcp::dstSocket);				//ACKの受信
-
+      //break;
     }
 
     //終了の原因(Game.h)
-    //string s = Game_::getEndInfo(recv_msg);
+    string s = Game_::getEndInfo(recv_msg);
     //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
     //endInfo[s]++;
     wfile << Game_::getEndInfo(recv_msg) << endl;

@@ -55,15 +55,15 @@ inline Bitboard safe_destination(Square s, int step, PieceType pt) {
   switch (pt)
   {
   case BLUE:
-    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_B(to) && distance(s, to) <= 1 ? square_bb(to) : Bitboard(0);
   case RED:
-    return is_ok_R(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_R(to) && distance(s, to) <= 1 ? square_bb(to) : Bitboard(0);
   case PURPLE:
-    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_B(to) && distance(s, to) <= 1 ? square_bb(to) : Bitboard(0);
   case GOAL:
-    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_B(to) && distance(s, to) <= 1 ? square_bb(to) : Bitboard(0);
   default:
-    return is_ok_B(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
+    return is_ok_B(to) && distance(s, to) <= 1 ? square_bb(to) : Bitboard(0);
   }
 }
 

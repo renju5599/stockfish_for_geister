@@ -43,7 +43,6 @@ int main(int argc, char* argv[]) {
   UCI::init(Options);
 
   int n, port; std::string destination;
-  int dstSocket;
   std::cout << "対戦回数 ポート番号 IPアドレスを入力↓" << std::endl;
   std::cin >> n >> port >> destination;
 
@@ -53,7 +52,9 @@ int main(int argc, char* argv[]) {
   Position::init();
   //Bitbases::init();
   //Endgames::init();
-  Threads.set(size_t(Options["Threads"]));
+  //std::cout << size_t(Options["Threads"]) << std::endl;
+  //Threads.set(size_t(Options["Threads"]));
+  Threads.set(1);
   Search::clear(); // After threads are up
   //Eval::NNUE::init();
   Eval::init();

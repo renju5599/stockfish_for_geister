@@ -1167,31 +1167,69 @@ namespace {
   }
 
 
-  int getWinPlayer_K(const Position& pos) {
-    if (pos.count<RED>(WHITE) == 0 || pos.count<PURPLE>(BLACK) == 0)
-      return 0;
-    if (pos.count<BLUE>(WHITE) == 0)
-      return 1;
-    if (pos.count<RED>(BLACK) == 0)
-      return 1;
-    if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
-      return 0;
-    if (pos.pieces(BLACK, RED) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
-      return 1;
-    return 2;
+  Value getWinPlayer_K(const Position& pos, int ply) {
+    if (pos.side_to_move() == WHITE) {
+      if (pos.pieces(BLACK, BLUE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.count<BLUE>(WHITE) == 0)
+        return -VALUE_MATE_IN_MAX_PLY + 1 - ply;
+      if (pos.count<RED>(WHITE) == 0)
+        return VALUE_MATE_IN_MAX_PLY - ply;
+
+      if (pos.count<RED>(BLACK) == 0)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.count<PURPLE>(BLACK) == 0) //相手の青駒はプログラム内では紫駒のまま（判定だけ青駒）
+        return VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
+        return VALUE_MATE_IN_MAX_PLY - ply;
+    }
+    else {
+      if (pos.count<PURPLE>(BLACK) == 0)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.count<RED>(BLACK) == 0)
+        return VALUE_MATE_IN_MAX_PLY - ply;
+
+      if (pos.count<RED>(WHITE) == 0)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.pieces(BLACK, BLUE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
+        return VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.count<BLUE>(WHITE) == 0)
+        return VALUE_MATE_IN_MAX_PLY - 1 - ply;
+    }
+    
+    return VALUE_ZERO;
   }
-  int getWinPlayer_P(int pnum, const Position& pos) {
-    if (pos.count<RED>(WHITE) == 0)
-      return pos.side_to_move() == WHITE;
-    if (pos.count<BLUE>(WHITE) == 0)
-      return pos.side_to_move() == BLACK;
-    if (pos.count<PURPLE>(BLACK) <= pnum)
-      return pos.side_to_move() == BLACK;
-    if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
-      return pos.side_to_move() == WHITE;
-    if (pos.pieces(BLACK, PURPLE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
-      return pos.side_to_move() == BLACK;
-    return 2;
+  Value getWinPlayer_P(int pnum, const Position& pos, int ply) {
+    if (pos.side_to_move() == WHITE) {
+      if (pos.count<RED>(WHITE) == 0)
+        return VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.count<GOAL>(WHITE) < 2)
+        return -VALUE_MATE_IN_MAX_PLY + 2 - ply;  //赤取るより脱出される方がマシという考え(+2)
+      if (pos.count<BLUE>(WHITE) == 0)
+        return -VALUE_MATE_IN_MAX_PLY + 1 - ply;  //100%青だと思って取られることはないという考え(+1)
+
+      if (pos.count<PURPLE>(BLACK) <= pnum)
+        return -VALUE_MATE_IN_MAX_PLY + 1 - ply;  //青の可能性が一応あるという考え(+1)
+      if (pos.count<GOAL>(BLACK) < 2)
+        return VALUE_MATE_IN_MAX_PLY - ply;
+    }
+    else {
+      if (pos.count<PURPLE>(BLACK) <= pnum)
+        return VALUE_MATE_IN_MAX_PLY - 1 - ply;
+      if (pos.count<GOAL>(BLACK) < 2)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+
+      if (pos.count<GOAL>(WHITE) < 2)
+        return VALUE_MATE_IN_MAX_PLY - 2 - ply;
+      if (pos.count<BLUE>(WHITE) == 0)
+        return VALUE_MATE_IN_MAX_PLY - 1 - ply;
+      if (pos.count<RED>(WHITE) == 0)
+        return -VALUE_MATE_IN_MAX_PLY - ply;
+    }
+
+    return VALUE_ZERO;
   }
 }
 
@@ -1199,8 +1237,10 @@ namespace {
 //前処理
 void Eval::init() {
   int i, j;
-  int dist1[16] = { 1,0,1,2,2,1,0,1,2,1,2,3,3,2,1,2 };
-  int dist2[16] = { 2,1,2,3,3,2,1,2,1,0,1,2,2,1,0,1 };
+  //int dist1[16] = { 1,0,1,2,2,1,0,1,2,1,2,3,3,2,1,2 };
+  int dist1[16] = { 2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3 };
+  //int dist2[16] = { 2,1,2,3,3,2,1,2,1,0,1,2,2,1,0,1 };
+  int dist2[16] = { 3,3,3,3,3,3,3,3,2,2,2,2,2,2,2,2 };
 
   for (i = 0; i < (1 << 16); i++) {
     _myGoalDist[i] = 0;
@@ -1216,27 +1256,31 @@ void Eval::init() {
   }
 }
 
-//searchの方に手番の変数がなさそうだから
-//評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
-Value Eval::evaluate_K(const Position& pos, int depth) {
-  int winPlayer = getWinPlayer_K(pos);
-  if (winPlayer != 2)
-    return (winPlayer == pos.side_to_move() ? VALUE_MATE_IN_MAX_PLY + depth : VALUE_MATED_IN_MAX_PLY - depth);
+
+Value Eval::evaluate_K(const Position& pos, int ply) {
+  Value v = getWinPlayer_K(pos, ply);
+  if (v != VALUE_ZERO) {
+    return v;
+  }
 
   Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
   Value s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
   if (pos.side_to_move() == WHITE) return s0 - s1;
   else return s1 - s0;
 }
-Value Eval::evaluate_P(const Position& pos, int depth) {
+
+//見るキャラ(WHITE,BLACK)にとってどれだけ嬉しいかを返す
+//大きい値返せば、勝ちと見做してくれるかと思ったらそうでもなかった...
+Value Eval::evaluate_P(const Position& pos, int ply) {
   if (Red::existRed) {
-    return Eval::evaluate_K(pos, depth);
+    return Eval::evaluate_K(pos, ply);
   }
   else {
     int bNum = Game_::uNum - Game_::rNum;
-    int winPlayer = getWinPlayer_P(bNum, pos);
-    if (winPlayer != 2)
-      return (winPlayer ? VALUE_MATE_IN_MAX_PLY + depth : VALUE_MATED_IN_MAX_PLY - depth);
+    Value v = getWinPlayer_P(bNum, pos, ply);
+    if (v != VALUE_ZERO) {
+      return v;
+    }
 
     Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
     Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));

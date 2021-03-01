@@ -438,7 +438,8 @@ constexpr bool is_ok(Square s) {
 }
 //“à‘¤6*6‚ÆƒS[ƒ‹‚ð‹–‰Â
 constexpr bool is_ok_B(Square s) {
-  return (s == SQ_B1 || s == SQ_B8 || s == SQ_G1 || s == SQ_G8) || (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
+  return (s == SQ_B1 || s == SQ_B8 || s == SQ_G1 || s == SQ_G8 || s == SQ_A1 || s == SQ_A8 || s == SQ_H1 || s == SQ_H8)
+    || (s >= SQ_B2 && s <= SQ_G7 && (s & 7) != 0 && (s & 7) != 7);
 }
 //“à‘¤6*6‚ð‹–‰Â
 constexpr bool is_ok_R(Square s) {

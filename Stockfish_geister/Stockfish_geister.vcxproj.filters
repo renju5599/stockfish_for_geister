@@ -16,7 +16,7 @@
     <Filter Include="syzygy">
       <UniqueIdentifier>{8a57760f-273f-41a5-a7a1-b745366dda71}</UniqueIdentifier>
     </Filter>
-    <Filter Include="incbin">
+    <Filter Include="syzygy\incbin">
       <UniqueIdentifier>{85a40e69-68a7-4acb-87aa-249a00575d38}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -192,12 +192,12 @@
       <Filter>syzygy</Filter>
     </ClInclude>
     <ClInclude Include="src\incbin\incbin.h">
-      <Filter>incbin</Filter>
+      <Filter>syzygy\incbin</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\incbin\UNLICENCE">
-      <Filter>incbin</Filter>
+      <Filter>syzygy\incbin</Filter>
     </None>
   </ItemGroup>
 </Project>

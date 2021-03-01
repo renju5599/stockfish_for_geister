@@ -72,8 +72,8 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
      << std::setfill('0') << std::setw(16) << pos.key()
      << std::setfill(' ') << std::dec << "\nCheckers: ";
 
-  //for (Bitboard b = pos.checkers(); b; )
-  //    os << UCI::square(pop_lsb(&b)) << " ";
+  for (Bitboard b = pos.checkers(); b; )
+      os << UCI::square(pop_lsb(&b)) << " ";
 
   if (    int(Tablebases::MaxCardinality) >= popcount(pos.pieces())
       )//&& !pos.can_castle(ANY_CASTLING))
@@ -216,6 +216,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   ss >> std::noskipws;
 
   // 1. Piece placement
+  //ÉSÅ[ÉãÇ4ã˜Ç…
   put_piece(W_GOAL, SQ_B8);
   put_piece(W_GOAL, SQ_G8);
   put_piece(B_GOAL, SQ_B1);
@@ -377,7 +378,7 @@ void Position::set_check_info(StateInfo* si) const {
   si->checkSquares[GOAL] = 0;
   for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
     si->checkSquares[BLUE] |= attacks_bb<BLUE>(ksq);
-    si->checkSquares[RED] |= attacks_bb<RED>(ksq);
+    //si->checkSquares[RED] |= attacks_bb<RED>(ksq);
     si->checkSquares[PURPLE] |= attacks_bb<PURPLE>(ksq);
   }
 }
@@ -577,7 +578,11 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
 /// Position::legal() tests whether a pseudo-legal move is legal
 
-// Ç‡ÇµÇ©ÇµÇƒÅFÇ¢ÇÁÇ»Ç¢
+void Position::print(){
+  for (const ExtMove& ms : MoveList<LEGAL>(*this))
+    sync_cout << file_of(to_sq(ms.move)) << " " << rank_of(to_sq(ms.move)) << sync_endl;
+}
+
 bool Position::legal(Move m) const {
 
   assert(is_ok(m));
@@ -645,6 +650,8 @@ bool Position::legal(Move m) const {
   // is moving along the ray towards or away from the king.
   //return   !(blockers_for_king(us) & from)
   //      ||  aligned(from, to, square<KING>(us));
+  return   !(blockers_for_king(us) & from)
+        ||  aligned(from, to, square<GOAL>(us));
   return true;
 }
 
@@ -982,8 +989,10 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   //st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
   const Square* ksqs = squares<GOAL>(them);
   st->checkersBB = 0;
-  for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
-    st->checkersBB |= givesCheck ? attackers_to(ksq) : 0;
+  if (givesCheck) {
+    for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
+      st->checkersBB |= attackers_to(ksq);
+    }
   }
   st->checkersBB &= pieces(us) & (pieces(us, BLUE) | pieces(us, PURPLE));
 
@@ -1278,7 +1287,26 @@ bool Position::see_ge(Move m, Value threshold) const {
       }
       */
       
-      //else // KING
+      if ((bb = stmAttackers & pieces(BLUE)))
+      {
+        if (swap = -swap < res)
+          break;
+        occupied ^= lsb(bb);
+      }
+      else if ((bb = stmAttackers & pieces(RED)))
+      {
+        if (swap = -swap < res)
+          break;
+        occupied ^= lsb(bb);
+      }
+      else if ((bb = stmAttackers & pieces(PURPLE)))
+      {
+        if (swap = -swap < res)
+          break;
+        occupied ^= lsb(bb);
+      }
+
+      else // KING
            // If we "capture" with the king but opponent still has attackers,
            // reverse the result.
           return (attackers & ~pieces(stm)) ? res ^ 1 : res;
@@ -1292,7 +1320,6 @@ bool Position::see_ge(Move m, Value threshold) const {
 /// or by repetition. It does not detect stalemates.
 
 bool Position::is_draw(int ply) const {
-
   if (st->rule50 > 99 && (!checkers() || MoveList<LEGAL>(*this).size()))
       return true;
 

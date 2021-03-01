@@ -188,15 +188,15 @@ namespace {
 
     for (Square from = *pl; from != SQ_NONE; from = *++pl)
     {
-        //if (Checks)
-        //{
+        if (Checks)
+        {
         //    if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
         //        && !(attacks_bb<Pt>(from) & target & pos.check_squares(Pt)))
         //        continue;
 
-        //    if (pos.blockers_for_king(~Us) & from)
-        //        continue;
-        //}
+            if (pos.blockers_for_king(~Us) & from)
+                continue;
+        }
 
         Bitboard b = attacks_bb<Pt>(from, pos.pieces()) & target;
 
@@ -253,18 +253,15 @@ namespace {
     {
         //Square ksq = pos.square<GOAL>(Us);
         //Bitboard b = attacks_bb<GOAL>(ksq) & target;
-        const Square* ksqs = pos.squares<GOAL>(Us);
-        //Bitboard b = 0;
-        //b |= attacks_bb<GOAL>(from) & target;
-        //while (b)
-        //  *moveList++ = make_move(ksq, pop_lsb(&b));
-        for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs)
-        {
-          Bitboard b = 0;
-          b |= attacks_bb<GOAL>(from) & target;
-          while (b)
-            *moveList++ = make_move(from, pop_lsb(&b));
-        }
+        //attacks_bb<GOAL>は0なのでいらなくないですか
+        //const Square* ksqs = pos.squares<GOAL>(Us);
+        //for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs)
+        //{
+        //  Bitboard b = 0;
+        //  b |= attacks_bb<GOAL>(ksq) & target;
+        //  while (b)
+        //    *moveList++ = make_move(ksq, pop_lsb(&b));
+        //}
 
         /*
         if ((Type != CAPTURES) && pos.can_castle(Us & ANY_CASTLING))
@@ -359,12 +356,13 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   //Bitboard b = attacks_bb<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
   //while (b)
   //  *moveList++ = make_move(from, pop_lsb(&b));
-  for (Square from = *ksqs; from != SQ_NONE; from = *++ksqs)
-  {
-    Bitboard b = attacks_bb<GOAL>(from) & ~pos.pieces(us);
-    while (b)
-      *moveList++ = make_move(from, pop_lsb(&b));
-  }
+  //attacks_bb<GOAL>は0なのでいらなくないですか
+  //for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs)
+  //{
+  //  Bitboard b = attacks_bb<GOAL>(ksq) & ~pos.pieces(us);
+  //  while (b)
+  //    *moveList++ = make_move(ksq, pop_lsb(&b));
+  //}
 
   if (more_than_one(pos.checkers()))
       return moveList; // Double check, only a king move can save the day
@@ -390,17 +388,24 @@ ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
   moveList = pos.checkers() ? generate<EVASIONS    >(pos, moveList)
                             : generate<NON_EVASIONS>(pos, moveList);
   // while的にあやしすぎる
+  //元のコードは元のStockfishを見てね
   while (cur != moveList) {
-    Square from;
-    for (from = *ksqs; from != SQ_NONE; from = *++ksqs) {
-      //if (   (pinned || from_sq(*cur) == ksq || type_of(*cur) == ENPASSANT)
-      if ((pinned || from_sq(*cur) == from)
-        && !pos.legal(*cur)) {
+    Square ksq;
+    if (pos.legal(*cur)) {
+      ++cur;
+      continue;
+    }
+    if (pinned) {
+      *cur = (--moveList)->move;
+      continue;
+    }
+    for (ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
+      if (from_sq(*cur) == ksq) {
         *cur = (--moveList)->move;
         break;
       }
     }
-    if(from == SQ_NONE)
+    if(ksq == SQ_NONE)
       ++cur;
   }
     
