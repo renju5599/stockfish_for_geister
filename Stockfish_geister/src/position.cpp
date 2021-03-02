@@ -597,6 +597,10 @@ bool Position::legal(Move m) const {
   for (Square ksq = *ksqs; ksq != SQ_NONE; ksq = *++ksqs) {
     assert(piece_on(ksq) == make_piece(us, GOAL));
   }
+  //const Square* ksqs2 = squares<GOAL>(~sideToMove);
+  //for (Square ksq = *ksqs2; ksq != SQ_NONE; ksq = *++ksqs2) {
+  //  if (to == ksq) return false;
+  //}
 
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after

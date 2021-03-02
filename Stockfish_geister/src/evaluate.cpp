@@ -1169,34 +1169,34 @@ namespace {
 
   Value getWinPlayer_K(const Position& pos, int ply) {
     if (pos.side_to_move() == WHITE) {
-      if (pos.pieces(BLACK, BLUE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
+      if (pos.count<GOAL>(WHITE) < 2)
+        return -VALUE_MATE_IN_MAX_PLY + ply;
       if (pos.count<BLUE>(WHITE) == 0)
-        return -VALUE_MATE_IN_MAX_PLY + 1 - ply;
+        return -VALUE_MATE_IN_MAX_PLY + 30 + ply;
       if (pos.count<RED>(WHITE) == 0)
         return VALUE_MATE_IN_MAX_PLY - ply;
 
       if (pos.count<RED>(BLACK) == 0)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
+        return -VALUE_MATE_IN_MAX_PLY + ply;
       if (pos.count<PURPLE>(BLACK) == 0) //相手の青駒はプログラム内では紫駒のまま（判定だけ青駒）
         return VALUE_MATE_IN_MAX_PLY - ply;
-      if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
+      if (pos.count<GOAL>(BLACK) < 2)
         return VALUE_MATE_IN_MAX_PLY - ply;
     }
     else {
       if (pos.count<PURPLE>(BLACK) == 0)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
-      if (pos.pieces(WHITE, BLUE) & pos.pieces(BLACK, GOAL) || pos.count<GOAL>(BLACK) < 2)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
+        return -VALUE_MATE_IN_MAX_PLY + ply;
+      if (pos.count<GOAL>(BLACK) < 2)
+        return -VALUE_MATE_IN_MAX_PLY + ply;
       if (pos.count<RED>(BLACK) == 0)
         return VALUE_MATE_IN_MAX_PLY - ply;
 
       if (pos.count<RED>(WHITE) == 0)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
-      if (pos.pieces(BLACK, BLUE) & pos.pieces(WHITE, GOAL) || pos.count<GOAL>(WHITE) < 2)
+        return -VALUE_MATE_IN_MAX_PLY + ply;
+      if (pos.count<GOAL>(WHITE) < 2)
         return VALUE_MATE_IN_MAX_PLY - ply;
       if (pos.count<BLUE>(WHITE) == 0)
-        return VALUE_MATE_IN_MAX_PLY - 1 - ply;
+        return VALUE_MATE_IN_MAX_PLY - 30 - ply;
     }
     
     return VALUE_ZERO;
@@ -1206,27 +1206,27 @@ namespace {
       if (pos.count<RED>(WHITE) == 0)
         return VALUE_MATE_IN_MAX_PLY - ply;
       if (pos.count<GOAL>(WHITE) < 2)
-        return -VALUE_MATE_IN_MAX_PLY + 2 - ply;  //赤取るより脱出される方がマシという考え(+2)
+        return -VALUE_MATE_IN_MAX_PLY + 20 + ply;  //赤取るより脱出される方がマシという考え(+20)
       if (pos.count<BLUE>(WHITE) == 0)
-        return -VALUE_MATE_IN_MAX_PLY + 1 - ply;  //100%青だと思って取られることはないという考え(+1)
+        return -VALUE_MATE_IN_MAX_PLY + 30 + ply;  //100%青だと思って取られることはないという考え(+30)
 
       if (pos.count<PURPLE>(BLACK) <= pnum)
-        return -VALUE_MATE_IN_MAX_PLY + 1 - ply;  //青の可能性が一応あるという考え(+1)
+        return -VALUE_MATE_IN_MAX_PLY + 10 + ply;  //青の可能性が一応あるという考え(+10)
       if (pos.count<GOAL>(BLACK) < 2)
         return VALUE_MATE_IN_MAX_PLY - ply;
     }
     else {
       if (pos.count<PURPLE>(BLACK) <= pnum)
-        return VALUE_MATE_IN_MAX_PLY - 1 - ply;
+        return VALUE_MATE_IN_MAX_PLY - 10 - ply;
       if (pos.count<GOAL>(BLACK) < 2)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
+        return -VALUE_MATE_IN_MAX_PLY + ply;
 
       if (pos.count<GOAL>(WHITE) < 2)
-        return VALUE_MATE_IN_MAX_PLY - 2 - ply;
+        return VALUE_MATE_IN_MAX_PLY - 20 - ply;
       if (pos.count<BLUE>(WHITE) == 0)
-        return VALUE_MATE_IN_MAX_PLY - 1 - ply;
+        return VALUE_MATE_IN_MAX_PLY - 30 + ply;
       if (pos.count<RED>(WHITE) == 0)
-        return -VALUE_MATE_IN_MAX_PLY - ply;
+        return -VALUE_MATE_IN_MAX_PLY + ply;
     }
 
     return VALUE_ZERO;
@@ -1258,10 +1258,10 @@ void Eval::init() {
 
 
 Value Eval::evaluate_K(const Position& pos, int ply) {
-  Value v = getWinPlayer_K(pos, ply);
-  if (v != VALUE_ZERO) {
-    return v;
-  }
+  //Value v = getWinPlayer_K(pos, ply);
+  //if (v != VALUE_ZERO) {
+  //  return v;
+  //}
 
   Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
   Value s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
@@ -1276,11 +1276,11 @@ Value Eval::evaluate_P(const Position& pos, int ply) {
     return Eval::evaluate_K(pos, ply);
   }
   else {
-    int bNum = Game_::uNum - Game_::rNum;
-    Value v = getWinPlayer_P(bNum, pos, ply);
-    if (v != VALUE_ZERO) {
-      return v;
-    }
+    //int bNum = Game_::uNum - Game_::rNum;
+    //Value v = getWinPlayer_P(bNum, pos, ply);
+    //if (v != VALUE_ZERO) {
+    //  return v;
+    //}
 
     Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
     Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));

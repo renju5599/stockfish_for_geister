@@ -53,7 +53,7 @@ namespace {
   //const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   //const char* StartFEN = "1g4g1/2uuuu2/2uuuu2/8/8/2RRRR2/2BBBB2/1G4G1 w KQkq - 0 1";
   //const char* StartFEN = "MOV?01B99b99b99b04R99r99r99r05u99b99b99b50u99r99r99r";
-  const char* StartFEN = "MOV?99r99b53B21R14R24B32R43B51u99r99r99r50u04u41u03u";
+  const char* StartFEN = "MOV?11R35B13B31R15B99b99r33R54u50u02u04u99r45u20u99r";
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")

@@ -570,6 +570,57 @@ namespace {
   
   template <NodeType NT>
   Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
+
+    //evaluateÇ…éóÇΩÇ±Ç∆èëÇ¢ÇƒÇΩÇØÇ«
+    //è„éËÇ≠ìÆÇ©Ç»Ç©Ç¡ÇΩÇÃÇ≈ñ≥óùÇ‚ÇËÇ±Ç±Ç…
+    if (Red::existRed) {
+      if (pos.side_to_move() == WHITE) {
+        if (pos.count<RED>(BLACK) == 0)
+          return mated_in(ss->ply);
+        if (pos.count<PURPLE>(BLACK) == 0)
+          return mate_in(ss->ply);
+      }
+      else {
+        if (pos.count<RED>(BLACK) == 0)
+          return mate_in(ss->ply);
+        if (pos.count<PURPLE>(BLACK) == 0)
+          return mated_in(ss->ply);
+      }
+    }
+    else {
+      if (pos.side_to_move() == WHITE) {
+        if (pos.count<PURPLE>(BLACK) <= Game_::uNum - Game_::rNum)
+          return mated_in(ss->ply) / 2;
+      }
+      else {
+        if (pos.count<PURPLE>(BLACK) <= Game_::uNum - Game_::rNum)
+          return mate_in(ss->ply) / 2;
+      }
+    }
+    if (pos.side_to_move() == WHITE) {
+      if (pos.count<RED>(WHITE) == 0)
+        return mate_in(ss->ply);
+      if (pos.count<GOAL>(WHITE) < 2)
+        return mated_in(ss->ply);
+      if (pos.count<BLUE>(WHITE) == 0)
+        return mated_in(ss->ply);
+
+      if (pos.count<GOAL>(BLACK) < 2)
+        return mate_in(ss->ply);
+    }
+    else {
+      if (pos.count<GOAL>(BLACK) < 2)
+        return mated_in(ss->ply);
+
+      if (pos.count<GOAL>(WHITE) < 2)
+        return mate_in(ss->ply);
+      if (pos.count<BLUE>(WHITE) == 0)
+        return mate_in(ss->ply);
+      if (pos.count<RED>(WHITE) == 0)
+        return mated_in(ss->ply);
+    }
+    //
+
     constexpr bool PvNode = NT == PV;
     const bool rootNode = PvNode && ss->ply == 0;
 
@@ -1274,7 +1325,6 @@ moves_loop: // When in check, search starts from here
 
       // Step 18. Undo move
       pos.undo_move(move);
-
       assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
       // Step 19. Check for a new best move
@@ -1402,6 +1452,56 @@ moves_loop: // When in check, search starts from here
   // function with zero depth, or recursively with further decreasing depth per call.
   template <NodeType NT>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
+
+    //evaluateÇ…éóÇΩÇ±Ç∆èëÇ¢ÇƒÇΩÇØÇ«
+    //è„éËÇ≠ìÆÇ©Ç»Ç©Ç¡ÇΩÇÃÇ≈ñ≥óùÇ‚ÇËÇ±Ç±Ç…
+    if (Red::existRed) {
+      if (pos.side_to_move() == WHITE) {
+        if (pos.count<RED>(BLACK) == 0)
+          return mated_in(ss->ply);
+        if (pos.count<PURPLE>(BLACK) == 0)
+          return mate_in(ss->ply);
+      }
+      else {
+        if (pos.count<RED>(BLACK) == 0)
+          return mate_in(ss->ply);
+        if (pos.count<PURPLE>(BLACK) == 0)
+          return mated_in(ss->ply);
+      }
+    }
+    else {
+      if (pos.side_to_move() == WHITE) {
+        if (pos.count<PURPLE>(BLACK) <= Game_::uNum - Game_::rNum)
+          return mated_in(ss->ply) / 2;
+      }
+      else {
+        if (pos.count<PURPLE>(BLACK) <= Game_::uNum - Game_::rNum)
+          return mate_in(ss->ply) / 2;
+      }
+    }
+    if (pos.side_to_move() == WHITE) {
+      if (pos.count<RED>(WHITE) == 0)
+        return mate_in(ss->ply);
+      if (pos.count<GOAL>(WHITE) < 2)
+        return mated_in(ss->ply);
+      if (pos.count<BLUE>(WHITE) == 0)
+        return mated_in(ss->ply);
+
+      if (pos.count<GOAL>(BLACK) < 2)
+        return mate_in(ss->ply);
+    }
+    else {
+      if (pos.count<GOAL>(BLACK) < 2)
+        return mated_in(ss->ply);
+
+      if (pos.count<GOAL>(WHITE) < 2)
+        return mate_in(ss->ply);
+      if (pos.count<BLUE>(WHITE) == 0)
+        return mate_in(ss->ply);
+      if (pos.count<RED>(WHITE) == 0)
+        return mated_in(ss->ply);
+    }
+    //
 
     constexpr bool PvNode = NT == PV;
 
