@@ -601,6 +601,20 @@ bool Position::legal(Move m) const {
   //for (Square ksq = *ksqs2; ksq != SQ_NONE; ksq = *++ksqs2) {
   //  if (to == ksq) return false;
   //}
+  //if (us == WHITE) {
+  //  if (to == SQ_B7 && piece_on(from) == W_RED && count<RED>(WHITE) == 1)
+  //    return true;
+  //  if (to == SQ_G7 && piece_on(from) == W_RED && count<RED>(WHITE) == 1)
+  //    return true;
+  //  if (from == SQ_B6 && piece_on(SQ_C7) == B_PURPLE)
+  //    return false;
+  //  if (from == SQ_C7 && piece_on(SQ_B6) == B_PURPLE)
+  //    return false;
+  //  if (from == SQ_G6 && piece_on(SQ_F7) == B_PURPLE)
+  //    return false;
+  //  if (from == SQ_F7 && piece_on(SQ_G6) == B_PURPLE)
+  //    return false;
+  //}
 
   // En passant captures are a tricky special case. Because they are rather
   // uncommon, we do it simply by testing whether the king is attacked after

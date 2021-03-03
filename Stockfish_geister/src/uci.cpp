@@ -53,7 +53,7 @@ namespace {
   //const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   //const char* StartFEN = "1g4g1/2uuuu2/2uuuu2/8/8/2RRRR2/2BBBB2/1G4G1 w KQkq - 0 1";
   //const char* StartFEN = "MOV?01B99b99b99b04R99r99r99r05u99b99b99b50u99r99r99r";
-  const char* StartFEN = "MOV?11R35B13B31R15B99b99r33R54u50u02u04u99r45u20u99r";
+  const char* StartFEN = "MOV?00R99r99b99r15B99b99r54B99r99b03u99r35u30u99b99r";
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
@@ -483,7 +483,7 @@ namespace {
       //‚±‚±‚Í“K“–
 
       //else if (token == "movetime")  is >> limits.movetime;
-      limits.movetime = 6000;
+      limits.movetime = 1000;
       //else if (token == "mate")      is >> limits.mate;
       limits.mate = VALUE_MATE;  //‚æ‚­‚í‚©‚ç‚ñ
 
@@ -715,7 +715,7 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
       }
       states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
       pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
-      Square sq_red = Red::picUpRed(20);
+      Square sq_red = Red::picUpRed(1000);
       //sq_red = SQUARE_ZERO;
       //sq_red += 1 * EAST;
       //sq_red += 5 * NORTH;
@@ -747,7 +747,8 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
     string s = Game_::getEndInfo(recv_msg);
     //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
     //endInfo[s]++;
-    wfile << Game_::getEndInfo(recv_msg) << endl;
+    s += (Red::existRed ? " Red" : " Purple");
+    wfile << s << endl;
 
 
     closePort(dstSocket);
