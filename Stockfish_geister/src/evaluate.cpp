@@ -1265,7 +1265,7 @@ Value Eval::evaluate_K(const Position& pos, int ply) {
     return v;
   }
 
-  Value s0 = ExistWeight * pos.count<ALL_PIECES>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE, RED));
+  Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE, BLUE));
   Value s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
   if (pos.side_to_move() == WHITE) return s0 - s1;
   else return s1 - s0;
@@ -1278,16 +1278,48 @@ Value Eval::evaluate_P(const Position& pos, int ply) {
     return Eval::evaluate_K(pos, ply);
   }
   else {
-    int bNum = Game_::uNum - Game_::rNum;
-    Value v = getWinPlayer_P(bNum, pos, ply);
-    if (v != VALUE_ZERO) {
-      return v;
-    }
+    //Value v = getWinPlayer_P(Game_::bNum, pos, ply);
+    //if (v != VALUE_ZERO) {
+    //  return v;
+    //}
 
-    Value s0 = ExistWeight * pos.count<ALL_PIECES>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE, RED));
-    Value s1 = ExistWeight * pos.count<ALL_PIECES>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
-    if (pos.side_to_move() == WHITE) return s0 - s1;
-    else return s1 - s0;
+    Value v = VALUE_ZERO;
+    Color us = pos.side_to_move();
+    //自分のGOALに近い場所にいる方が良い（敵駒より）
+    const Square* ksqs = pos.squares<GOAL>(us);
+    for (int i = 0; i < 2; i++) {
+      int ksq_r = (int)rank_of(ksqs[0]);
+      int ksq_f = (int)file_of(ksqs[0]);
+      int MyMIN = 10, OpMIN = 10;
+      for (int f = FILE_B; f <= FILE_G; f++) {
+        for (int r = RANK_2; r <= RANK_7; r++) {
+          if (pos.piece_on(make_square((File)f, (Rank)r)) == NO_PIECE)
+            continue;
+          if (color_of(pos.piece_on(make_square((File)f, (Rank)r))) == us) {
+            int scr = abs((int)f - ksq_f) + abs((int)r - ksq_r);
+            if(MyMIN > scr)
+              MyMIN = scr;
+          }
+          else {
+            int scr = abs((int)f - ksq_f) + abs((int)r - ksq_r);
+            if(OpMIN > scr)
+              OpMIN = scr;
+          }
+        }
+      }
+      if (MyMIN > OpMIN) {
+        v -= 3000;
+      }
+    }
+    
+
+    //赤晒し
+    //Value s0 = ExistWeight * pos.count<ALL_PIECES>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
+    //Value s1 = ExistWeight * pos.count<ALL_PIECES>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
+    Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE, RED));
+    Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));
+    if (us == WHITE) return s0 - s1 + v;
+    else return s1 - s0 + v;
   }
 }
 ////評価関数. tebanプレイヤーの有利さを返す. teban=0…自分手番.
@@ -1474,6 +1506,57 @@ void Red::myTurn(char board[6][6]) {
   if ((from_y == 5 && from_x == 0) || (from_y == 5 && from_x == 5)) {	//こいつ脱出しなかったから赤だゾ
     Red::eval[Red::histCnt - 1][to_y][to_x] += weightHairi;
   }
+
+
+  //GOALできる位置の敵駒は赤（じゃないと勝てない）
+  int MyMIN = 20, OpMIN = 20;
+  int ri = 0, rj = 0;
+  for (int i = 0; i <= 5; i++) {
+    for (int j = 0; j <= 5; j++) {
+      if (Red::hist[histCnt - 1][i][j] == '.')
+        continue;
+      if (Red::hist[histCnt-1][i][j] == 'u') {
+        int scr = 5-i + j;
+        if (OpMIN > scr) {
+          OpMIN = scr;
+          ri = i;
+          rj = j;
+        }
+      }
+      else {
+        int scr = 5-i + j;
+        if (MyMIN > scr)
+          MyMIN = scr;
+      }
+    }
+  }
+  if (MyMIN-1 > OpMIN) {
+    Red::eval[Red::histCnt - 1][ri][rj] += weightHairi;
+  }
+  MyMIN = 20; OpMIN = 20;
+  for (int i = 0; i <= 5; i++) {
+    for (int j = 0; j <= 5; j++) {
+      if (Red::hist[histCnt - 1][i][j] == '.')
+        continue;
+      if (Red::hist[histCnt - 1][i][j] == 'u') {
+        int scr = 5-i + 5-j;
+        if (OpMIN > scr) {
+          OpMIN = scr;
+          ri = i;
+          rj = j;
+        }
+      }
+      else {
+        int scr = 5-i + 5-j;
+        if (MyMIN > scr)
+          MyMIN = scr;
+      }
+    }
+  }
+  if (MyMIN - 1 > OpMIN) {
+    Red::eval[Red::histCnt - 1][ri][rj] += weightHairi;
+  }
+
 
   //今脱出口にある相手駒が、直前に動かしてきたものでなければ、赤
   if (Red::hist[Red::histCnt - 1][5][0] == 'u' && !(to_y == 5 && to_x == 0)) {

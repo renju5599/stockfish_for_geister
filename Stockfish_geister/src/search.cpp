@@ -584,15 +584,20 @@ namespace {
     }
     else {
       if (pos.side_to_move() == BLACK) {
-        if (pos.count<PURPLE>(BLACK) <= Game_::uNum - Game_::rNum)
+        if (Game_::rNum == 1 && pos.count<PURPLE>(BLACK) <= Game_::bNum) {
           return mate_in(ss->ply);
+        }
       }
     }
     if (pos.side_to_move() == WHITE) {
       if (pos.count<RED>(WHITE) == 0)
         return mate_in(ss->ply);
-      if (pos.count<GOAL>(WHITE) < 2)
-        return mated_in(ss->ply);
+      if (pos.count<GOAL>(WHITE) < 2) {
+        if (Game_::rNum > 1)
+          return mated_in(ss->ply);
+        else
+          return mated_in(ss->ply) / 2;
+      }
       if (pos.count<BLUE>(WHITE) == 0)
         return mated_in(ss->ply);
     }
@@ -1448,15 +1453,20 @@ namespace {
     }
     else {
       if (pos.side_to_move() == BLACK) {
-        if (pos.count<PURPLE>(BLACK) <= Game_::uNum - Game_::rNum)
+        if (Game_::rNum == 1 && pos.count<PURPLE>(BLACK) <= Game_::bNum) {
           return mate_in(ss->ply);
+        }
       }
     }
     if (pos.side_to_move() == WHITE) {
       if (pos.count<RED>(WHITE) == 0)
         return mate_in(ss->ply);
-      if (pos.count<GOAL>(WHITE) < 2)
-        return mated_in(ss->ply);
+      if (pos.count<GOAL>(WHITE) < 2) {
+        if (Game_::rNum > 1)
+          return mated_in(ss->ply);
+        else
+          return mated_in(ss->ply) / 2;
+      }
       if (pos.count<BLUE>(WHITE) == 0)
         return mated_in(ss->ply);
     }

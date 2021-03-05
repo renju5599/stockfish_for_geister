@@ -53,7 +53,7 @@ namespace {
   //const char* StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   //const char* StartFEN = "1g4g1/2uuuu2/2uuuu2/8/8/2RRRR2/2BBBB2/1G4G1 w KQkq - 0 1";
   //const char* StartFEN = "MOV?01B99b99b99b04R99r99r99r05u99b99b99b50u99r99r99r";
-  const char* StartFEN = "MOV?00R99r99b99r15B99b99r54B99r99b03u99r35u30u99b99r";
+  const char* StartFEN = "MOV?04B24B35B99r15B01R32R99r54u99r12u99r43u30u20u10u";
 
   // position() is called when engine receives the "position" UCI command.
   // The function sets up the position described in the given FEN string ("fen")
@@ -483,7 +483,7 @@ namespace {
       //ここは適当
 
       //else if (token == "movetime")  is >> limits.movetime;
-      limits.movetime = 1000;
+      limits.movetime = 500;
       //else if (token == "mate")      is >> limits.mate;
       limits.mate = VALUE_MATE;  //よくわからん
 
@@ -505,7 +505,7 @@ namespace {
 namespace Game_ {
   char board[6][6];			//board[y][x] = {R:自分の赤, B:自分の青, u:相手の駒, '.':空マス, 自分はy=5の側にいる
   char komaName[6][6];		//komaName[y][x] = {受信時に, (y, x)にある駒の名前}
-  int rNum, uNum;				//盤面にある敵の赤コマの個数, 敵のコマの個数
+  int rNum, uNum, bNum;				//盤面にある敵の赤コマの個数, 敵のコマの個数
 }
 
 //sの先頭がt ⇔ true
@@ -569,6 +569,7 @@ void Game_::recvBoard(string msg) {
     }
     if (type == 'u') Game_::uNum++;
   }
+  Game_::bNum = Game_::uNum - Game_::rNum;
 }
 
 //終了の原因
@@ -748,6 +749,9 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
     //if (endInfo.find(s) == endInfo.end()) endInfo[s] = 0;
     //endInfo[s]++;
     s += (Red::existRed ? " Red" : " Purple");
+    s += " " + initRedName;
+    s += " R.";
+    s += (char)('0' + Game_::rNum);
     wfile << s << endl;
 
 
