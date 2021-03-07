@@ -579,27 +579,49 @@ namespace {
         if (pos.count<RED>(BLACK) == 0)
           return mate_in(ss->ply);
         if (pos.count<PURPLE>(BLACK) == 0)
-          return mated_in(ss->ply);
+          return mated_in(ss->ply) + 1000;
       }
     }
     else {
       if (pos.side_to_move() == BLACK) {
-        if (Game_::rNum == 1 && pos.count<PURPLE>(BLACK) <= Game_::bNum) {
-          return mate_in(ss->ply);
+        if (pos.count<PURPLE>(BLACK) <= Game_::bNum) {
+          if (Game_::lost_pattern == 0) {
+            return mate_in(ss->ply) / Game_::rNum - 500;
+          }
+          else if (Game_::lost_pattern == 1) {
+            if (Game_::rNum == 1)
+              return mate_in(ss->ply) - 1500;
+          }
         }
       }
     }
     if (pos.side_to_move() == WHITE) {
-      if (pos.count<RED>(WHITE) == 0)
-        return mate_in(ss->ply);
       if (pos.count<GOAL>(WHITE) < 2) {
-        if (Game_::rNum > 1)
-          return mated_in(ss->ply);
-        else
+        if (Game_::lost_pattern == 0) {
+          if (Game_::rNum > 1)
+            return mated_in(ss->ply) + 250;
+          else
+            return mated_in(ss->ply) / 2;
+        }
+        else if (Game_::lost_pattern == 1) {
           return mated_in(ss->ply) / 2;
+        }
       }
-      if (pos.count<BLUE>(WHITE) == 0)
-        return mated_in(ss->ply);
+
+      if (Red::bare) {
+        if (pos.count<RED>(WHITE) == 0)
+          return mate_in(ss->ply) / 3;
+        if (pos.count<BLUE>(WHITE) == 0)
+          return mated_in(ss->ply) + 2000;
+      }
+      else {
+        if (pos.count<RED>(WHITE) == 0)
+          return mate_in(ss->ply) / 2 + 1000;
+        if (Game_::myrNum > 1) {
+          if (pos.count<BLUE>(WHITE) == 0)
+            return mated_in(ss->ply) + 3000;
+        }
+      }
     }
     else {
       if (pos.count<GOAL>(BLACK) < 2)
@@ -1439,8 +1461,6 @@ namespace {
   template <NodeType NT>
   Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth) {
 
-    Value add = VALUE_DRAW;
-
     //evaluateÇ…éóÇΩÇ±Ç∆èëÇ¢ÇƒÇΩÇØÇ«
     //è„éËÇ≠ìÆÇ©Ç»Ç©Ç¡ÇΩÇÃÇ≈ñ≥óùÇ‚ÇËÇ±Ç±Ç…
     if (Red::existRed) {
@@ -1448,27 +1468,49 @@ namespace {
         if (pos.count<RED>(BLACK) == 0)
           return mate_in(ss->ply);
         if (pos.count<PURPLE>(BLACK) == 0)
-          return mated_in(ss->ply);
+          return mated_in(ss->ply) + 1000;
       }
     }
     else {
       if (pos.side_to_move() == BLACK) {
-        if (Game_::rNum == 1 && pos.count<PURPLE>(BLACK) <= Game_::bNum) {
-          return mate_in(ss->ply);
+        if (pos.count<PURPLE>(BLACK) <= Game_::bNum) {
+          if (Game_::lost_pattern == 0) {
+            return mate_in(ss->ply) / Game_::rNum - 500;
+          }
+          else if (Game_::lost_pattern == 1) {
+            if (Game_::rNum == 1)
+              return mate_in(ss->ply) - 1500;
+          }
         }
       }
     }
     if (pos.side_to_move() == WHITE) {
-      if (pos.count<RED>(WHITE) == 0)
-        return mate_in(ss->ply);
       if (pos.count<GOAL>(WHITE) < 2) {
-        if (Game_::rNum > 1)
-          return mated_in(ss->ply);
-        else
+        if (Game_::lost_pattern == 0) {
+          if (Game_::rNum > 1)
+            return mated_in(ss->ply) + 250;
+          else
+            return mated_in(ss->ply) / 2;
+        }
+        else if (Game_::lost_pattern == 1) {
           return mated_in(ss->ply) / 2;
+        }
       }
-      if (pos.count<BLUE>(WHITE) == 0)
-        return mated_in(ss->ply);
+
+      if (Red::bare) {
+        if (pos.count<RED>(WHITE) == 0)
+          return mate_in(ss->ply) / 3;
+        if (pos.count<BLUE>(WHITE) == 0)
+          return mated_in(ss->ply) + 2000;
+      }
+      else {
+        if (pos.count<RED>(WHITE) == 0)
+          return mate_in(ss->ply) / 2 + 1000;
+        if (Game_::myrNum > 1) {
+          if (pos.count<BLUE>(WHITE) == 0)
+            return mated_in(ss->ply) + 3000;
+        }
+      }
     }
     else {
       if (pos.count<GOAL>(BLACK) < 2)

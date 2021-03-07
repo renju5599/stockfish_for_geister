@@ -483,7 +483,7 @@ namespace {
       //ここは適当
 
       //else if (token == "movetime")  is >> limits.movetime;
-      limits.movetime = 500;
+      limits.movetime = 1000;
       //else if (token == "mate")      is >> limits.mate;
       limits.mate = VALUE_MATE;  //よくわからん
 
@@ -506,6 +506,9 @@ namespace Game_ {
   char board[6][6];			//board[y][x] = {R:自分の赤, B:自分の青, u:相手の駒, '.':空マス, 自分はy=5の側にいる
   char komaName[6][6];		//komaName[y][x] = {受信時に, (y, x)にある駒の名前}
   int rNum, uNum, bNum;				//盤面にある敵の赤コマの個数, 敵のコマの個数
+  int lost_pattern;
+  int eval_pattern;
+  int myrNum, mybNum;
 }
 
 //sの先頭がt ⇔ true
@@ -547,6 +550,8 @@ void Game_::recvBoard(string msg) {
   const int baius = 4;
   Game_::rNum = 4;	//敵の赤い駒の個数
   Game_::uNum = 0;
+  Game_::myrNum = 4;
+  Game_::mybNum = 4;
 
   for (i = 0; i < 16; i++) {
     int x = msg[baius + 3 * i] - '0';
@@ -566,6 +571,8 @@ void Game_::recvBoard(string msg) {
     }
     else {
       if (type == 'r' && i >= 8) Game_::rNum--;
+      if (type == 'r' && i < 8) Game_::myrNum--;
+      if (type == 'b' && i < 8) Game_::mybNum--;
     }
     if (type == 'u') Game_::uNum++;
   }
@@ -687,6 +694,11 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
 
     Search::clear();
 
+    Game_::lost_pattern = rand() % 2;
+    //Game_::lost_pattern = 1;
+    Game_::eval_pattern = rand() % 2;
+    //Game_::eval_pattern = 1;
+
     int res;
     string recv_msg;
 
@@ -706,7 +718,11 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
 
       //position.cppに recvBoardを移植して、Threadとかをいじれるようにする？
       Game_::recvBoard(recv_msg);			//駒を配置
-      Red::myTurn(Game_::board);
+      states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
+      pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
+      Red::myTurn(Game_::board, pos);
+      if (Red::bare)
+        cerr << "バレている" << endl;
       cerr << "赤度" << endl;
       for (int i = 0; i < 6; i++) {
         for (int j = 0; j < 6; j++) {
@@ -714,8 +730,7 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
         }
         cerr << endl;
       }
-      states = StateListPtr(new std::deque<StateInfo>(1)); // Drop old and create a new one
-      pos.set(recv_msg, Options["UCI_Chess960"], &states->back(), Threads.main());
+      
       Square sq_red = Red::picUpRed(1000);
       //sq_red = SQUARE_ZERO;
       //sq_red += 1 * EAST;
@@ -752,6 +767,10 @@ int tcp::playGame(int n, int port = -1, string destination = "") {
     s += " " + initRedName;
     s += " R.";
     s += (char)('0' + Game_::rNum);
+    s += " losP.";
+    s += (char)('0' + Game_::lost_pattern);
+    s += " evP.";
+    s += (char)('0' + Game_::eval_pattern);
     wfile << s << endl;
 
 

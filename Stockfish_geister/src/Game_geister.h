@@ -11,6 +11,16 @@ namespace Game_
 	extern char board[6][6];			//board[y][x] = {R:自分の赤, B:自分の青, u:相手の駒, '.':空マス, 自分はy=5の側にいる
 	extern char komaName[6][6];		//komaName[y][x] = {受信時に, (y, x)にある駒の名前}
 	extern int rNum, uNum, bNum;				//盤面にある敵の赤コマの個数, 敵のコマの個数
+	extern int myrNum, mybNum;
+
+	//0:赤1個の時に取り優先
+	//1:赤1個の時に取り優先（それまで取り無視）
+	//2:ずっと取り優先
+	//3:ずっと防ぎ優先
+	extern int lost_pattern;
+
+	//0:赤晒し	1:通常
+	extern int eval_pattern;
 
 	const int WON = 1;
 	const int LST = 2;
@@ -51,6 +61,7 @@ namespace Red {
 	extern char hist[350][6][6];	//R, B, u
 	extern int eval[350][6][6];	//赤度
 	extern bool existRed;
+	extern bool bare;	//バレている
 
 
 	//試合開始時に呼び出す
@@ -60,7 +71,7 @@ namespace Red {
 	void myMove(Move mv);
 
 	//2手目以降の自分手番の最初に呼び出す。
-	void myTurn(char board[6][6]);
+	void myTurn(char board[6][6], const Position& pos);
 
 	//myMoveとかmyTurnとかを呼び出した直後に呼び出したい。
 	//赤度evalが閾値以上になった赤の現在位置を、赤度が大きいものからリストアップ

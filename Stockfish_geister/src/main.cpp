@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
   //Endgames::init();
   //std::cout << size_t(Options["Threads"]) << std::endl;
   //Threads.set(size_t(Options["Threads"]));
-  Threads.set(4);
+  Threads.set(1);
   Search::clear(); // After threads are up
   //Eval::NNUE::init();
   Eval::init();

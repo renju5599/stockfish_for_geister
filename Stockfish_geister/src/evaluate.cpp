@@ -1155,15 +1155,23 @@ std::string Eval::trace(const Position& pos) {
 #include "search.h"
 
 namespace {
-  int _myGoalDist[1 << 16];	//_myGoalDist[s] = (sのiビット目が1⇔マスiに駒がある)ときのゴールまでのマンハッタン距離の和.
-  int _yourGoalDist[1 << 16];
+  int _myGoalDist_0[1 << 16];	//_myGoalDist[s] = (sのiビット目が1⇔マスiに駒がある)ときのゴールまでのマンハッタン距離の和.
+  int _yourGoalDist_0[1 << 16];
+  int _myGoalDist_1[1 << 16]; //位置のスコア的な
+  int _yourGoalDist_1[1 << 16];
   int bitCountTable[1 << 16];
 
-  inline int myGoalDist(long long s) {
-    return _myGoalDist[s >> 8 & 65535] + _myGoalDist[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 4 + _myGoalDist[s >> 40 & 65535] + bitCountTable[s >> 40 & 65535] * 8;
+  inline int myGoalDist_0(long long s) {
+    return _myGoalDist_0[s >> 8 & 65535] + _myGoalDist_0[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 2 + _myGoalDist_0[s >> 40 & 65535] + bitCountTable[s >> 40 & 65535] * 4;
   }
-  inline int yourGoalDist(long long s) {
-    return _yourGoalDist[s >> 8 & 65535] + bitCountTable[s >> 8 & 65535] * 8 + _myGoalDist[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 4 + _myGoalDist[s >> 40 & 65535];
+  inline int yourGoalDist_0(long long s) {
+    return _yourGoalDist_0[s >> 8 & 65535] + bitCountTable[s >> 8 & 65535] * 4 + _yourGoalDist_0[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 2 + _yourGoalDist_0[s >> 40 & 65535];
+  }
+  inline int myGoalDist_1(long long s) {
+    return _myGoalDist_1[s >> 8 & 65535] + _myGoalDist_1[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 4 + _myGoalDist_1[s >> 40 & 65535] + bitCountTable[s >> 40 & 65535] * 8;
+  }
+  inline int yourGoalDist_1(long long s) {
+    return _yourGoalDist_1[s >> 8 & 65535] + bitCountTable[s >> 8 & 65535] * 8 + _yourGoalDist_1[s >> 24 & 65535] + bitCountTable[s >> 24 & 65535] * 4 + _yourGoalDist_1[s >> 40 & 65535];
   }
 
 
@@ -1239,20 +1247,22 @@ namespace {
 //前処理
 void Eval::init() {
   int i, j;
-  //int dist1[16] = { 1,0,1,2,2,1,0,1,2,1,2,3,3,2,1,2 };
-  int dist1[16] = { 2,1,2,3,3,2,1,2,4,3,4,5,5,4,3,4 };
-  //int dist2[16] = { 2,1,2,3,3,2,1,2,1,0,1,2,2,1,0,1 };
-  int dist2[16] = { 4,3,4,5,5,4,3,4,3,1,2,3,3,2,1,2 };
+  int dist1_0[16] = { 1,0,1,2,2,1,0,1,2,1,2,3,3,2,1,2 };
+  int dist1_1[16] = { 2,1,2,3,3,2,1,2,4,3,4,5,5,4,3,4 };
+  int dist2_0[16] = { 2,1,2,3,3,2,1,2,1,0,1,2,2,1,0,1 };
+  int dist2_1[16] = { 4,3,4,5,5,4,3,4,3,1,2,3,3,2,1,2 };
 
   for (i = 0; i < (1 << 16); i++) {
-    _myGoalDist[i] = 0;
-    _yourGoalDist[i] = 0;
+    _myGoalDist_0[i] = 0;
+    _yourGoalDist_0[i] = 0;
     bitCountTable[i] = 0;
     for (j = 0; j < 16; j++) {
       if (((i >> j) & 1) == 0) continue;
       //マスjからゴールまでのマンハッタン距離
-      _myGoalDist[i] += dist1[j];
-      _yourGoalDist[i] += dist2[j];
+      _myGoalDist_0[i] += dist1_0[j];
+      _yourGoalDist_0[i] += dist2_0[j];
+      _myGoalDist_1[i] += dist1_1[j];
+      _yourGoalDist_1[i] += dist2_1[j];
       bitCountTable[i]++;
     }
   }
@@ -1260,13 +1270,21 @@ void Eval::init() {
 
 
 Value Eval::evaluate_K(const Position& pos, int ply) {
-  Value v = getWinPlayer_K(pos, ply);
-  if (v != VALUE_ZERO) {
-    return v;
-  }
+  //Value v = getWinPlayer_K(pos, ply);
+  //if (v != VALUE_ZERO) {
+  //  return v;
+  //}
 
-  Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE, BLUE));
-  Value s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
+
+  Value s0 = VALUE_ZERO, s1 = VALUE_ZERO;
+  if(Game_::eval_pattern == 0){
+    s0 = ExistWeight * pos.count<ALL_PIECES>(WHITE) - DistWeight * myGoalDist_1(pos.pieces(WHITE));
+    s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist_1(pos.pieces(BLACK));
+  }
+  else if (Game_::eval_pattern == 1) {
+    s0 = /*ExistWeight * pos.count<BLUE>(WHITE)*/ - DistWeight * myGoalDist_1(pos.pieces(WHITE, BLUE));
+    s1 = ExistWeight * pos.count<PURPLE>(BLACK) - DistWeight * yourGoalDist_1(pos.pieces(BLACK));
+  }
   if (pos.side_to_move() == WHITE) return s0 - s1;
   else return s1 - s0;
 }
@@ -1285,39 +1303,70 @@ Value Eval::evaluate_P(const Position& pos, int ply) {
 
     Value v = VALUE_ZERO;
     Color us = pos.side_to_move();
-    //自分のGOALに近い場所にいる方が良い（敵駒より）
-    const Square* ksqs = pos.squares<GOAL>(us);
-    for (int i = 0; i < 2; i++) {
-      int ksq_r = (int)rank_of(ksqs[0]);
-      int ksq_f = (int)file_of(ksqs[0]);
-      int MyMIN = 10, OpMIN = 10;
-      for (int f = FILE_B; f <= FILE_G; f++) {
-        for (int r = RANK_2; r <= RANK_7; r++) {
-          if (pos.piece_on(make_square((File)f, (Rank)r)) == NO_PIECE)
-            continue;
-          if (color_of(pos.piece_on(make_square((File)f, (Rank)r))) == us) {
-            int scr = abs((int)f - ksq_f) + abs((int)r - ksq_r);
-            if(MyMIN > scr)
-              MyMIN = scr;
-          }
-          else {
-            int scr = abs((int)f - ksq_f) + abs((int)r - ksq_r);
-            if(OpMIN > scr)
-              OpMIN = scr;
-          }
-        }
-      }
-      if (MyMIN > OpMIN) {
-        v -= 3000;
-      }
+    //自分のGOALに近い場所にいる方が良い（敵駒より
+    int MyMIN = 10, OpMIN = 10;
+    const Square* wsq = pos.squares<ALL_PIECES>(us);
+    for (Square sq = *wsq; sq != SQ_NONE; sq = *++wsq) {
+      //int scr = yourGoalDist_0(1LL << sq);
+      int scr;
+      if (us == WHITE)
+        scr = yourGoalDist_0(1LL << sq);
+      else
+        scr = myGoalDist_0(1LL << sq);
+      if (MyMIN > scr)
+        MyMIN = scr;
     }
+    const Square* bsq = pos.squares<ALL_PIECES>(~us);
+    for (Square sq = *bsq; sq != SQ_NONE; sq = *++bsq) {
+      //int scr = yourGoalDist_0(1LL << sq);
+      int scr;
+      if (us == WHITE)
+        scr = yourGoalDist_0(1LL << sq);
+      else
+        scr = myGoalDist_0(1LL << sq);
+      if (OpMIN > scr)
+        OpMIN = scr;
+    }
+    if (MyMIN > OpMIN) {
+      v -= 10000;
+    }
+    //const Square* ksqs = pos.squares<GOAL>(us);
+    //for (int i = 0; i < 2; i++) {
+    //  int ksq_r = (int)rank_of(ksqs[0]);
+    //  int ksq_f = (int)file_of(ksqs[0]);
+    //  int MyMIN = 10, OpMIN = 10;
+    //  for (int f = FILE_B; f <= FILE_G; f++) {
+    //    for (int r = RANK_2; r <= RANK_7; r++) {
+    //      if (pos.piece_on(make_square((File)f, (Rank)r)) == NO_PIECE)
+    //        continue;
+    //      if (color_of(pos.piece_on(make_square((File)f, (Rank)r))) == us) {
+    //        int scr = abs((int)f - ksq_f) + abs((int)r - ksq_r);
+    //        if(MyMIN > scr)
+    //          MyMIN = scr;
+    //      }
+    //      else {
+    //        int scr = abs((int)f - ksq_f) + abs((int)r - ksq_r);
+    //        if(OpMIN > scr)
+    //          OpMIN = scr;
+    //      }
+    //    }
+    //  }
+    //  if (MyMIN > OpMIN) {
+    //    v -= 10000;
+    //  }
+    //}
     
 
+    Value s0 = VALUE_ZERO, s1 = VALUE_ZERO;
     //赤晒し
-    //Value s0 = ExistWeight * pos.count<ALL_PIECES>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE));
-    //Value s1 = ExistWeight * pos.count<ALL_PIECES>(BLACK) - DistWeight * yourGoalDist(pos.pieces(BLACK));
-    Value s0 = ExistWeight * pos.count<BLUE>(WHITE) - DistWeight * myGoalDist(pos.pieces(WHITE, RED));
-    Value s1 = -DistWeight * yourGoalDist(pos.pieces(BLACK));
+    if (Game_::eval_pattern == 0) {
+      s0 = ExistWeight * pos.count<ALL_PIECES>(WHITE) - DistWeight * myGoalDist_1(pos.pieces(WHITE));
+      s1 = ExistWeight * pos.count<ALL_PIECES>(BLACK) - DistWeight * yourGoalDist_1(pos.pieces(BLACK));
+    }
+    else if (Game_::eval_pattern == 1) {
+      s0 = /*ExistWeight * pos.count<BLUE>(WHITE)*/ - DistWeight * myGoalDist_1(pos.pieces(WHITE, RED));
+      s1 = -DistWeight * yourGoalDist_1(pos.pieces(BLACK));
+    }
     if (us == WHITE) return s0 - s1 + v;
     else return s1 - s0 + v;
   }
@@ -1433,11 +1482,13 @@ namespace Red {
   char hist[350][6][6];	//R, B, u
   int eval[350][6][6];	//赤度
   bool existRed;
+  bool bare;
 }
 
 //試合開始時に呼び出す
 void Red::init() {
   Red::histCnt = 0;
+  Red::bare = 0;
 }
 
 //自分が手を打ったときに呼び出す
@@ -1447,7 +1498,7 @@ void Red::myMove(Move mv) {
   Red::histCnt++;
 }
 //2手目以降の自分手番の最初に呼び出す。
-void Red::myTurn(char board[6][6]) {
+void Red::myTurn(char board[6][6], const Position& pos) {
   int i, j;
 
   if (Red::histCnt == 0) {
@@ -1468,10 +1519,11 @@ void Red::myTurn(char board[6][6]) {
 
   Move mv = detectMove(Red::hist[Red::histCnt - 2], Red::hist[Red::histCnt - 1]);
   moveEval(Red::eval[Red::histCnt - 2], Red::eval[Red::histCnt - 1], mv);
-  int from_y = rank_of(from_sq(mv)) - 1;
-  int to_y = rank_of(to_sq(mv)) - 1;
-  int from_x = file_of(from_sq(mv)) - 1;
-  int to_x = file_of(to_sq(mv)) - 1;
+  Square fsq = from_sq(mv), tsq = to_sq(mv);
+  int from_y = rank_of(fsq) - 1;
+  int to_y = rank_of(tsq) - 1;
+  int from_x = file_of(fsq) - 1;
+  int to_x = file_of(tsq) - 1;
 
   char block_op[6][6];
   int prevMyRed = 0;
@@ -1511,11 +1563,26 @@ void Red::myTurn(char board[6][6]) {
   //GOALできる位置の敵駒は赤（じゃないと勝てない）
   int MyMIN = 20, OpMIN = 20;
   int ri = 0, rj = 0;
+  //const Square* wsq = pos.squares<ALL_PIECES>(WHITE);
+  //for (Square sq = *wsq; sq != SQ_NONE; sq = *++wsq) {
+  //  int scr = yourGoalDist_0(1LL<<sq);
+  //  if (MyMIN > scr)
+  //    MyMIN = scr;
+  //}
+  //const Square* bsq = pos.squares<ALL_PIECES>(BLACK);
+  //for (Square sq = *bsq; sq != SQ_NONE; sq = *++bsq) {
+  //  int scr = yourGoalDist_0(1LL << sq);
+  //  if (OpMIN > scr) {
+  //    OpMIN = scr;
+  //    ri = rank_of(sq);
+  //    rj = file_of(sq);
+  //  }
+  //}
   for (int i = 0; i <= 5; i++) {
     for (int j = 0; j <= 5; j++) {
-      if (Red::hist[histCnt - 1][i][j] == '.')
+      if (Red::hist[histCnt - 2][i][j] == '.')
         continue;
-      if (Red::hist[histCnt-1][i][j] == 'u') {
+      if (Red::hist[histCnt-2][i][j] == 'u') {
         int scr = 5-i + j;
         if (OpMIN > scr) {
           OpMIN = scr;
@@ -1530,15 +1597,19 @@ void Red::myTurn(char board[6][6]) {
       }
     }
   }
-  if (MyMIN-1 > OpMIN) {
-    Red::eval[Red::histCnt - 1][ri][rj] += weightHairi;
+  if (MyMIN > OpMIN) {
+    if (from_x == rj && from_y == ri) {
+      Red::eval[Red::histCnt - 1][to_y][to_x] += weightHairi;
+    }
+    else
+      Red::eval[Red::histCnt - 1][ri][rj] += weightHairi;
   }
   MyMIN = 20; OpMIN = 20;
   for (int i = 0; i <= 5; i++) {
     for (int j = 0; j <= 5; j++) {
-      if (Red::hist[histCnt - 1][i][j] == '.')
+      if (Red::hist[histCnt - 2][i][j] == '.')
         continue;
-      if (Red::hist[histCnt - 1][i][j] == 'u') {
+      if (Red::hist[histCnt - 2][i][j] == 'u') {
         int scr = 5-i + 5-j;
         if (OpMIN > scr) {
           OpMIN = scr;
@@ -1553,8 +1624,12 @@ void Red::myTurn(char board[6][6]) {
       }
     }
   }
-  if (MyMIN - 1 > OpMIN) {
-    Red::eval[Red::histCnt - 1][ri][rj] += weightHairi;
+  if (MyMIN > OpMIN) {
+    if (from_x == rj && from_y == ri) {
+      Red::eval[Red::histCnt - 1][to_y][to_x] += weightHairi;
+    }
+    else
+      Red::eval[Red::histCnt - 1][ri][rj] += weightHairi;
   }
 
 
@@ -1564,6 +1639,13 @@ void Red::myTurn(char board[6][6]) {
   }
   if (Red::hist[Red::histCnt - 1][5][5] == 'u' && !(to_y == 5 && to_x == 5)) {
     Red::eval[Red::histCnt - 1][5][5] += weightHairi;
+  }
+
+  if (Red::hist[Red::histCnt - 1][0][0] == 'R') {
+    Red::bare = 1;
+  }
+  if (Red::hist[Red::histCnt - 1][0][5] == 'R') {
+    Red::bare = 1;
   }
 }
 
