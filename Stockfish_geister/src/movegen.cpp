@@ -238,6 +238,7 @@ namespace {
             break;
         default:
             static_assert(true, "Unsupported type in generate_all()");
+			break;
     }
 
     //moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
